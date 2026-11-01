@@ -186,9 +186,86 @@ elif menu=="🧮 Calculadora Materiales":
             st.markdown(f"### TOTAL: RD$ {total:,}")
 
 elif menu=="📓 Fiado":
-    st.title("📓 Fiado")
-    if st.session_state.fiados:
-        st.dataframe(pd.DataFrame(st.session_state.fiados))
+    st.title("📓 Control de Fiado - Cuaderno Digital")
+    st.caption("Aquí anotas a quién le fiaste, como el cuaderno de antes pero que no se pierde")
+    
+    col1, col2 = st.columns([1,2])
+    
+    with col1:
+        st.subheader("➕ Nuevo Fiado")
+        with st.form("nuevo_fiado", clear_on_submit=True):
+            cliente = st.text_input("Nombre del cliente / maestro", placeholder="Ej: José el Maestro")
+            telefono = st.text_input("Teléfono / WhatsApp", placeholder="829-...")
+            monto = st.number_input("Monto RD$", min_value=100, max_value=500000, value=5000, step=100)
+            fecha = st.date_input("Fecha fiado", value=date.today())
+            vence = st.date_input("Promesa de pago", value=date.today())
+            nota = st.text_input("Qué se llevó", placeholder="Ej: 10 Cemento, 20 Varillas")
+            
+            guardar = st.form_submit_button("💾 Guardar Fiado", type="primary", use_container_width=True)
+            if guardar:
+                if cliente == "":
+                    st.error("Pon el nombre")
+                else:
+                    st.session_state.fiados.append({
+                        "Cliente": cliente,
+                        "Tel": telefono,
+                        "Monto": monto,
+                        "Fecha": str(fecha),
+                        "Vence": str(vence),
+                        "Que llevó": nota,
+                        "Estado": "Pendiente"
+                    })
+                    st.success(f"✅ Fiado de {cliente} por RD$ {monto} guardado")
+                    st.balloons()
+    
+    with col2:
+        st.subheader("📋 Lista de Fiados")
+        if st.session_state.fiados:
+            df = pd.DataFrame(st.session_state.fiados)
+            
+            # Buscador
+            buscar = st.text_input("🔍 Buscar cliente", placeholder="Escribe nombre...")
+            if buscar:
+                df = df[df["Cliente"].str.contains(buscar, case=False, na=False)]
+            
+            # Total
+            total_pendiente = df[df["Estado"]=="Pendiente"]["Monto"].sum() if "Estado" in df.columns else df["Monto"].sum()
+            st.metric("💰 Total por cobrar en la calle", f"RD$ {total_pendiente:,.0f}", f"{len(df)} clientes")
+            
+            # Mostrar tabla con botones
+            for i, row in df.iterrows():
+                with st.container(border=True):
+                    c1, c2, c3 = st.columns([3,1,1])
+                    with c1:
+                        st.markdown(f"**{row['Cliente']}** - RD$ {row['Monto']:,}")
+                        st.caption(f"📞 {row.get('Tel','')} | 📅 Vence: {row.get('Vence', row.get('Fecha'))} | {row.get('Que llevó','')}")
+                    with c2:
+                        if row.get("Estado") == "Pendiente":
+                            if st.button("✅ Cobrado", key=f"cob_{i}"):
+                                st.session_state.fiados[i]["Estado"] = "Pagado"
+                                st.success("Marcado como pagado")
+                                st.rerun()
+                        else:
+                            st.success("Pagado")
+                    with c3:
+                        if st.button("🗑️ Borrar", key=f"del_{i}"):
+                            st.session_state.fiados.pop(i)
+                            st.rerun()
+            
+            st.divider()
+            st.dataframe(df, use_container_width=True)
+            
+            if st.button("📲 Generar mensaje para cobrar por WhatsApp"):
+                mensaje = f"Hola, de Ferretería La Fe. Te recordamos tu balance pendiente RD$ {total_pendiente:,.0f}. Gracias!"
+                st.code(mensaje)
+                st.info("Copia y pégalo en WhatsApp")
+        else:
+            st.info("📭 No hay fiados aún. Agrega el primero a la izquierda.")
+            st.markdown("""
+            **Ejemplo de cómo se verá:**
+            - José el Maestro - RD$ 5,000 - 10 Cemento
+            - Carlos Albañil - RD$ 12,000 - Varillas y Blocks
+            """)
 
 elif menu=="📊 Cierre":
     st.title("📊 Cierre")
