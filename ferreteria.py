@@ -140,7 +140,7 @@ elif menu == "📓 Control de Fiado":
 elif menu == "📊 Cierre de Caja":
     st.title("📊 Cierre de Caja de Hoy")
     st.metric("Vendido Hoy", f"RD$ {st.session_state.ventas_hoy:,.2f}")
-    efectivo_en_caja = st.number_input("¿Cuánto efectivo hay en la caja físicamente?", 0.0, 1000000.0, st.session_state.ventas_hoy)
+    efectivo_en_caja = st.number_input("Cuanto efectivo hay en la caja fisicamente?", min_value=0.0, max_value=1000000.0, value=float(st.session_state.ventas_hoy))
     diferencia = efectivo_en_caja - st.session_state.ventas_hoy
     if diferencia == 0:
         st.success("✅ Caja cuadra perfecta")
