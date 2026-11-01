@@ -40,6 +40,35 @@ if 'inventario' not in st.session_state or "Icono" not in st.session_state.inven
 if 'carrito' not in st.session_state: st.session_state.carrito=[]
 if 'fiados' not in st.session_state: st.session_state.fiados=[]
 if 'ventas_hoy' not in st.session_state: st.session_state.ventas_hoy=0
+if 'ultima_factura' not in st.session_state: st.session_state.ultima_factura=None
+if 'contador_factura' not in st.session_state: st.session_state.contador_factura=1
+
+def generar_texto_factura(cliente, carrito, subtotal, itbis, total, num_factura):
+    fecha = datetime.now().strftime("%d/%m/%Y %I:%M %p")
+    lineas = []
+    lineas.append("="*42)
+    lineas.append("      FERRETERIA LA FE - QUISQUEYA")
+    lineas.append("      San Pedro de Macoris, RD")
+    lineas.append("      Tel: 829-264-7574")
+    lineas.append("="*42)
+    lineas.append(f"FACTURA No: {num_factura:06d}")
+    lineas.append(f"FECHA: {fecha}")
+    lineas.append(f"CLIENTE: {cliente}")
+    lineas.append("-"*42)
+    lineas.append(f"{'CANT'} {'PRODUCTO':<20} {'TOTAL'}")
+    lineas.append("-"*42)
+    for item in carrito:
+        prod = item['Producto'][:20]
+        lineas.append(f"{item['Cant']} x {prod:<20} RD${item['Total']}")
+    lineas.append("-"*42)
+    lineas.append(f"SUBTOTAL: RD$ {subtotal:,.2f}")
+    lineas.append(f"ITBIS 18%: RD$ {itbis:,.2f}")
+    lineas.append(f"TOTAL: RD$ {total:,.2f}")
+    lineas.append("="*42)
+    lineas.append("  Gracias por su compra en La Fe!")
+    lineas.append("  Todo para su construccion")
+    lineas.append("="*42)
+    return "\n".join(lineas)
 
 with st.sidebar:
     show_logo(150)
@@ -51,13 +80,11 @@ with st.sidebar:
         st.rerun()
     st.success("Soporte: 829-264-7574")
 
-# --- PUNTO DE VENTA CON BARRAS CORREGIDO ---
+# --- PUNTO DE VENTA CON FACTURA ---
 if menu=="🛒 Punto de Venta":
     c1,c2=st.columns([2,1])
     with c1:
         st.title("Punto de Venta")
-        
-        # === SISTEMA DE BARRAS 606 - SIN ERROR ===
         st.markdown("#### 📷 Sistema de Barras 606")
         col_bar1, col_bar2 = st.columns([3,1])
         with col_bar1:
@@ -100,22 +127,87 @@ if menu=="🛒 Punto de Venta":
                             st.toast(f"{row['Producto']} agregado")
     with c2:
         st.subheader("Factura")
+        cliente_factura = st.text_input("Cliente", value="Cliente Mostrador", key="cliente_fact")
+        tipo_pago = st.selectbox("Pago", ["Efectivo", "Fiado", "Transferencia"])
+
         if st.session_state.carrito:
             for i, item in enumerate(st.session_state.carrito):
-                st.write(f"{item['Icono']} {item['Producto']} ({item.get('Código','')}) - {item['Cant']} x RD$ {item['Total']}")
-            total=sum([x['Total'] for x in st.session_state.carrito])*1.18
+                col_t, col_x = st.columns([4,1])
+                with col_t:
+                    st.write(f"{item['Icono']} {item['Producto'][:20]} - {item['Cant']} x RD$ {item['Total']}")
+                with col_x:
+                    if st.button("X", key=f"del_carr_{i}"):
+                        st.session_state.carrito.pop(i)
+                        st.rerun()
+            
+            subtotal = sum([x['Total'] for x in st.session_state.carrito])
+            itbis = subtotal * 0.18
+            total = subtotal * 1.18
+            
+            st.divider()
+            st.write(f"Subtotal: RD$ {subtotal:,.2f}")
+            st.write(f"ITBIS 18%: RD$ {itbis:,.2f}")
             st.metric("TOTAL + ITBIS", f"RD$ {total:,.2f}")
-            if st.button("✅ COBRAR", type="primary", use_container_width=True):
-                st.session_state.ventas_hoy+=total
-                st.success("Venta registrada!")
+            
+            if st.button("✅ COBRAR Y GENERAR FACTURA", type="primary", use_container_width=True):
+                num = st.session_state.contador_factura
+                texto_fact = generar_texto_factura(cliente_factura, st.session_state.carrito, subtotal, itbis, total, num)
+                st.session_state.ultima_factura = {
+                    "texto": texto_fact,
+                    "cliente": cliente_factura,
+                    "total": total,
+                    "num": num,
+                    "fecha": datetime.now()
+                }
+                st.session_state.ventas_hoy += total
+                st.session_state.contador_factura += 1
+                
+                for item in st.session_state.carrito:
+                    idx = st.session_state.inventario[st.session_state.inventario["Código"]==item["Código"]].index
+                    if not idx.empty:
+                        st.session_state.inventario.loc[idx, "Stock"] -= item["Cant"]
+                
+                st.session_state.carrito = []
+                st.success(f"Venta registrada! Factura No {num:06d}")
                 st.balloons()
-                st.session_state.carrito=[]
                 st.rerun()
+
             if st.button("🗑️ Vaciar carrito"):
                 st.session_state.carrito=[]
                 st.rerun()
         else:
             st.info("Carrito vacío. Escanea o busca producto.")
+        
+        # ULTIMA FACTURA CON BOTONES
+        if st.session_state.ultima_factura:
+            st.divider()
+            st.markdown("### 🧾 Ultima Factura")
+            st.code(st.session_state.ultima_factura["texto"], language="text")
+            
+            col_down1, col_down2 = st.columns(2)
+            with col_down1:
+                st.download_button(
+                    "📥 Descargar TXT",
+                    st.session_state.ultima_factura["texto"],
+                    file_name=f"FACTURA_{st.session_state.ultima_factura['num']:06d}_{st.session_state.ultima_factura['cliente']}.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+            with col_down2:
+                if st.button("🖨️ Imprimir Ticket", use_container_width=True):
+                    html_ticket = f"""
+                    <html><head><style>
+                    @media print {{ @page {{ size: 80mm auto; margin: 0; }} }}
+                    body {{ font-family: monospace; width: 80mm; font-size: 12px; }}
+                    pre {{ white-space: pre-wrap; }}
+                    </style></head><body>
+                    <pre>{st.session_state.ultima_factura["texto"]}</pre>
+                    <script>window.print();</script>
+                    </body></html>
+                    """
+                    st.components.v1.html(html_ticket, height=600, scrolling=True)
+            
+            st.info("Listo para impresora termica 80mm.")
 
 elif menu=="📦 Catálogo":
     st.title("📦 Catálogo Visual La Fe - Con Códigos de Barra")
@@ -149,20 +241,12 @@ elif menu=="🧮 Calculadora Materiales":
             arena=round(m2*0.08, 2)
             varilla=int(m2*1.2)
             total=blocks*precio_block + cemento*550 + arena*2500 + varilla*420
-            
             st.success(f"Para {m2} m2 de pared:")
             col1,col2=st.columns(2)
             with col1:
-                st.markdown(f"""
-                **Materiales:**
-                - 🧱 {blocks} Blocks ({tipo})
-                - 🏗️ {cemento} Fundas Cemento
-                - 🏖️ {arena} m3 Arena
-                - 🔩 {varilla} Varillas 3/8
-                """)
+                st.markdown(f"**Materiales:**\n- 🧱 {blocks} Blocks ({tipo})\n- 🏗️ {cemento} Fundas Cemento\n- 🏖️ {arena} m3 Arena\n- 🔩 {varilla} Varillas 3/8")
             with col2:
                 st.markdown(f"### TOTAL La Fe: RD$ {total:,}")
-                st.info("Incluye 5% desperdicio")
                 if st.button("Agregar todo al carrito"):
                     st.session_state.carrito.append({"Producto":f"Pared {m2}m2 - {blocks} Blocks","Icono":"🧱","Cant":1,"Precio":total,"Total":total})
                     st.success("Cotización agregada al Punto de Venta")
@@ -170,10 +254,7 @@ elif menu=="🧮 Calculadora Materiales":
     elif obra=="Zapata (4 zapatas)":
         prof=st.number_input("Profundidad (m)", 0.5, 2.0, 1.0)
         if st.button("Calcular Zapatas", type="primary"):
-            cemento=10
-            varilla=16
-            grava=1.0
-            arena=0.8
+            cemento=10; varilla=16; grava=1.0; arena=0.8
             total=cemento*550 + varilla*420 + grava*2800 + arena*2500
             st.success(f"Para 4 zapatas de {prof}m:")
             st.markdown(f"- 🏗️ {cemento} Cementos, 🔩 {varilla} Varillas 1/2, 🪨 {grava}m3 Grava, 🏖️ {arena}m3 Arena")
@@ -182,41 +263,22 @@ elif menu=="🧮 Calculadora Materiales":
     elif obra=="Piso 10x10 (100 m2)":
         espesor=st.selectbox("Espesor", ["10cm (estándar)", "15cm (pesado)"])
         if st.button("Calcular Piso", type="primary"):
-            cemento=70 if "10cm" in espesor else 100
-            arena=7
-            grava=8
+            cemento=70 if "10cm" in espesor else 100; arena=7; grava=8
             total=cemento*550 + arena*2500 + grava*2800
-            st.success(f"Piso 10x10 = 100 m2:")
-            st.markdown(f"- 🏗️ {cemento} Cementos, 🏖️ {arena}m3 Arena, 🪨 {grava}m3 Grava")
-            st.markdown(f"### TOTAL: RD$ {total:,}")
+            st.success(f"Piso 10x10 = 100 m2:"); st.markdown(f"- 🏗️ {cemento} Cementos, 🏖️ {arena}m3 Arena, 🪨 {grava}m3 Grava"); st.markdown(f"### TOTAL: RD$ {total:,}")
 
     elif obra=="Casita 3x3 Completa":
         if st.button("Calcular Casita Completa", type="primary", use_container_width=True):
-            st.markdown("""
-            ### 🏠 Casita 3x3 (9 m2) - Lista La Fe:
-            - 🧱 112 Blocks 6'' = RD$ 4,704
-            - 🏗️ 15 Cemento Panam = RD$ 8,250
-            - 🔩 20 Varilla 3/8 = RD$ 8,400
-            - 🏖️ 2 m3 Arena Lavada = RD$ 5,000
-            - 🪨 1.5 m3 Grava = RD$ 4,200
-            - 🏠 6 Zinc 10ft = RD$ 4,500
-            - 🪢 5 lb Alambre + 3 lb Clavos = RD$ 785
-            #### 💰 TOTAL MATERIALES: RD$ 35,839
-            """)
-            st.warning("Precio ferretero real Quisqueya - ¡Todo disponible en La Fe!")
+            st.markdown("### 🏠 Casita 3x3 (9 m2) - Lista La Fe:\n- 🧱 112 Blocks 6'' = RD$ 4,704\n- 🏗️ 15 Cemento Panam = RD$ 8,250\n- 🔩 20 Varilla 3/8 = RD$ 8,400\n- 🏖️ 2 m3 Arena Lavada = RD$ 5,000\n- 🪨 1.5 m3 Grava = RD$ 4,200\n- 🏠 6 Zinc 10ft = RD$ 4,500\n- 🪢 5 lb Alambre + 3 lb Clavos = RD$ 785\n#### 💰 TOTAL MATERIALES: RD$ 35,839")
             if st.button("Cotizar casita completa"):
                 st.session_state.carrito.append({"Producto":"Casita 3x3 Completa","Icono":"🏠","Cant":1,"Precio":35839,"Total":35839})
                 st.success("Agregado al carrito")
 
     elif obra=="Techo de Zinc 3x3":
         if st.button("Calcular Techo", type="primary"):
-            zinc=6
-            clavos=2
-            madera=10
+            zinc=6; clavos=2; madera=10
             total=zinc*750 + clavos*120 + madera*400
-            st.success(f"Techo 3x3:")
-            st.markdown(f"- 🏠 {zinc} Zinc 10ft, 🔨 {clavos}lb Clavos, 🪵 {madera} Cuartones")
-            st.markdown(f"### TOTAL: RD$ {total:,}")
+            st.success(f"Techo 3x3:"); st.markdown(f"- 🏠 {zinc} Zinc 10ft, 🔨 {clavos}lb Clavos, 🪵 {madera} Cuartones"); st.markdown(f"### TOTAL: RD$ {total:,}")
 
 elif menu=="📓 Fiado":
     st.title("📓 Control de Fiado - Cuaderno Digital")
@@ -247,20 +309,16 @@ elif menu=="📓 Fiado":
             for i, row in df.iterrows():
                 with st.container(border=True):
                     c1, c2, c3 = st.columns([3,1,1])
-                    with c1:
-                        st.markdown(f"**{row['Cliente']}** - RD$ {row['Monto']:,}")
+                    with c1: st.markdown(f"**{row['Cliente']}** - RD$ {row['Monto']:,}")
                     with c2:
                         if row.get("Estado") == "Pendiente":
                             if st.button("✅ Cobrado", key=f"cob_{i}"):
-                                st.session_state.fiados[i]["Estado"] = "Pagado"
-                                st.rerun()
+                                st.session_state.fiados[i]["Estado"] = "Pagado"; st.rerun()
                     with c3:
                         if st.button("🗑️ Borrar", key=f"del_{i}"):
-                            st.session_state.fiados.pop(i)
-                            st.rerun()
+                            st.session_state.fiados.pop(i); st.rerun()
             st.dataframe(df, use_container_width=True)
-        else:
-            st.info("📭 No hay fiados aún.")
+        else: st.info("📭 No hay fiados aún.")
 
 elif menu=="📊 Cierre":
     st.title("📊 Cierre de Caja - Ferretería La Fe")
@@ -279,13 +337,9 @@ elif menu=="📊 Cierre":
         efectivo_fisico = st.number_input("¿Cuánto efectivo hay FÍSICO?", min_value=0.0, value=float(ventas), step=100.0)
         diferencia = efectivo_fisico - ventas
         if diferencia == 0 and ventas>0:
-            st.success(f"✅ CUADRE PERFECTO - RD$ {efectivo_fisico:,.0f}")
-            st.balloons()
-        elif ventas==0:
-            st.info("Aún no hay ventas")
-        if st.button("🔒 Cerrar Día", type="primary"):
-            st.session_state.ventas_hoy = 0
-            st.rerun()
+            st.success(f"✅ CUADRE PERFECTO - RD$ {efectivo_fisico:,.0f}"); st.balloons()
+        elif ventas==0: st.info("Aún no hay ventas")
+        if st.button("🔒 Cerrar Día", type="primary"): st.session_state.ventas_hoy = 0; st.rerun()
     with c2:
         st.subheader("⚠️ Stock Bajo")
         bajo = st.session_state.inventario[st.session_state.inventario["Stock"] < 50]
