@@ -132,13 +132,16 @@ elif menu=="📦 Catálogo":
 elif menu=="🧮 Calculadora Materiales":
     st.title("🧮 Calculadora Inteligente La Fe")
     st.caption("Calcula exacto para que el cliente no compre de más ni de menos")
+    
     obra=st.selectbox("¿Qué va a construir?", ["Pared de Blocks", "Zapata (4 zapatas)", "Piso 10x10 (100 m2)", "Casita 3x3 Completa", "Techo de Zinc 3x3"])
+    
     if obra=="Pared de Blocks":
         c1,c2,c3=st.columns(3)
         largo=c1.number_input("Largo pared (metros)", 1.0, 100.0, 10.0)
         alto=c2.number_input("Alto pared (metros)", 1.0, 10.0, 2.5)
         tipo=c3.selectbox("Tipo Block", ["Block 6'' - RD$42", "Block 4'' - RD$35", "Block 8'' - RD$48"])
         precio_block = 42 if "6''" in tipo else (35 if "4''" in tipo else 48)
+        
         if st.button("Calcular Pared", type="primary"):
             m2=largo*alto
             blocks=int(m2*12.5) + 5
@@ -146,32 +149,74 @@ elif menu=="🧮 Calculadora Materiales":
             arena=round(m2*0.08, 2)
             varilla=int(m2*1.2)
             total=blocks*precio_block + cemento*550 + arena*2500 + varilla*420
+            
             st.success(f"Para {m2} m2 de pared:")
             col1,col2=st.columns(2)
             with col1:
-                st.markdown(f"**Materiales:**\n- 🧱 {blocks} Blocks\n- 🏗️ {cemento} Cemento\n- 🏖️ {arena} m3 Arena\n- 🔩 {varilla} Varillas")
+                st.markdown(f"""
+                **Materiales:**
+                - 🧱 {blocks} Blocks ({tipo})
+                - 🏗️ {cemento} Fundas Cemento
+                - 🏖️ {arena} m3 Arena
+                - 🔩 {varilla} Varillas 3/8
+                """)
             with col2:
                 st.markdown(f"### TOTAL La Fe: RD$ {total:,}")
+                st.info("Incluye 5% desperdicio")
                 if st.button("Agregar todo al carrito"):
-                    st.session_state.carrito.append({"Producto":f"Pared {m2}m2","Icono":"🧱","Cant":1,"Precio":total,"Total":total})
-                    st.success("Agregado")
+                    st.session_state.carrito.append({"Producto":f"Pared {m2}m2 - {blocks} Blocks","Icono":"🧱","Cant":1,"Precio":total,"Total":total})
+                    st.success("Cotización agregada al Punto de Venta")
+
     elif obra=="Zapata (4 zapatas)":
         prof=st.number_input("Profundidad (m)", 0.5, 2.0, 1.0)
         if st.button("Calcular Zapatas", type="primary"):
-            total=10*550 + 16*420 + 1*2800 + 0.8*2500
-            st.success(f"Para 4 zapatas: RD$ {total:,}")
+            cemento=10
+            varilla=16
+            grava=1.0
+            arena=0.8
+            total=cemento*550 + varilla*420 + grava*2800 + arena*2500
+            st.success(f"Para 4 zapatas de {prof}m:")
+            st.markdown(f"- 🏗️ {cemento} Cementos, 🔩 {varilla} Varillas 1/2, 🪨 {grava}m3 Grava, 🏖️ {arena}m3 Arena")
+            st.markdown(f"### TOTAL: RD$ {total:,}")
+
     elif obra=="Piso 10x10 (100 m2)":
         espesor=st.selectbox("Espesor", ["10cm (estándar)", "15cm (pesado)"])
         if st.button("Calcular Piso", type="primary"):
-            total=70*550 + 7*2500 + 8*2800 if "10cm" in espesor else 100*550 + 7*2500 + 8*2800
-            st.success(f"Piso 10x10: RD$ {total:,}")
+            cemento=70 if "10cm" in espesor else 100
+            arena=7
+            grava=8
+            total=cemento*550 + arena*2500 + grava*2800
+            st.success(f"Piso 10x10 = 100 m2:")
+            st.markdown(f"- 🏗️ {cemento} Cementos, 🏖️ {arena}m3 Arena, 🪨 {grava}m3 Grava")
+            st.markdown(f"### TOTAL: RD$ {total:,}")
+
     elif obra=="Casita 3x3 Completa":
         if st.button("Calcular Casita Completa", type="primary", use_container_width=True):
-            st.markdown("#### 💰 TOTAL MATERIALES: RD$ 35,839")
+            st.markdown("""
+            ### 🏠 Casita 3x3 (9 m2) - Lista La Fe:
+            - 🧱 112 Blocks 6'' = RD$ 4,704
+            - 🏗️ 15 Cemento Panam = RD$ 8,250
+            - 🔩 20 Varilla 3/8 = RD$ 8,400
+            - 🏖️ 2 m3 Arena Lavada = RD$ 5,000
+            - 🪨 1.5 m3 Grava = RD$ 4,200
+            - 🏠 6 Zinc 10ft = RD$ 4,500
+            - 🪢 5 lb Alambre + 3 lb Clavos = RD$ 785
+            #### 💰 TOTAL MATERIALES: RD$ 35,839
+            """)
+            st.warning("Precio ferretero real Quisqueya - ¡Todo disponible en La Fe!")
+            if st.button("Cotizar casita completa"):
+                st.session_state.carrito.append({"Producto":"Casita 3x3 Completa","Icono":"🏠","Cant":1,"Precio":35839,"Total":35839})
+                st.success("Agregado al carrito")
+
     elif obra=="Techo de Zinc 3x3":
         if st.button("Calcular Techo", type="primary"):
-            total=6*750 + 2*120 + 10*400
-            st.success(f"Techo 3x3: RD$ {total:,}")
+            zinc=6
+            clavos=2
+            madera=10
+            total=zinc*750 + clavos*120 + madera*400
+            st.success(f"Techo 3x3:")
+            st.markdown(f"- 🏠 {zinc} Zinc 10ft, 🔨 {clavos}lb Clavos, 🪵 {madera} Cuartones")
+            st.markdown(f"### TOTAL: RD$ {total:,}")
 
 elif menu=="📓 Fiado":
     st.title("📓 Control de Fiado - Cuaderno Digital")
