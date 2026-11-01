@@ -8,7 +8,7 @@ st.set_page_config(page_title="Ferretería La Fe - Sistema 606", layout="wide", 
 col_logo, col_title = st.columns([1, 4])
 with col_logo:
     try:
-        st.image("logo.png", width=120)
+        st.image("logo.png")
     except:
         st.markdown("### 🧱")
 with col_title:
