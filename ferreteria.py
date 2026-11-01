@@ -73,11 +73,9 @@ if menu=="🛒 Punto de Venta":
                 row = match.iloc[0]
                 cant = 1
                 st.session_state.carrito.append({"Producto":row['Producto'],"Icono":row['Icono'],"Cant":cant,"Precio":row['Precio RD$'],"Total":cant*row['Precio RD$'],"Código":row['Código']})
-                st.success(f"✅ {row['Producto']} agregado por código {row['Código']}")
+                                st.success(f"✅ {row['Producto']} agregado por código {row['Código']}")
                 st.toast(f"Agregado: {row['Producto']}")
-                # Limpia para próximo escaneo
-                if "barcode_scan" in st.session_state:
-                    st.session_state.barcode_scan = ""
+                st.rerun()
             else:
                 st.error(f"❌ Código '{codigo_escaneado}' no existe. Verifica en Catálogo.")
         
