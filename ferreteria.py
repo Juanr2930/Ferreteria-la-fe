@@ -38,7 +38,10 @@ if 'fiados' not in st.session_state: st.session_state.fiados = []
 if 'ventas_hoy' not in st.session_state: st.session_state.ventas_hoy = 0
 
 # --- MENU ---
-st.sidebar.image("logo.png", width=150) if st.session_state.get('inventario') is not None else None
+try:
+    st.sidebar.image("logo.png", width=150)
+except:
+    st.sidebar.markdown("### 🧱 La Fe")
 st.sidebar.title("🧱 Ferretería La Fe")
 st.sidebar.caption("Quisqueya, SPM - Sistema 606")
 menu = st.sidebar.radio("Ir a:", ["🛒 Punto de Venta", "🧮 Calculadora Inteligente", "📓 Control de Fiado", "📊 Cierre de Caja"])
