@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime
-from io import BytesIO
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+
 
 st.set_page_config(page_title="Ferretería La Fe - Sistema 606", layout="wide", page_icon="🧱")
 
