@@ -4,18 +4,21 @@ from datetime import date, datetime
 
 st.set_page_config(page_title="Ferretería La Fe - Sistema 606", layout="wide", page_icon="🧱")
 
-# --- LOGO Y TITULO ---
+# --- LOGO Y TITULO - NUNCA FALLA ---
 col_logo, col_title = st.columns([1, 4])
 with col_logo:
     try:
-        st.image("logo.png")
+        st.image("logo.png", width=120)
     except:
-        st.markdown("### 🧱")
+        try:
+            st.image("logo.jpg", width=120)
+        except:
+            st.markdown("### 🧱")
 with col_title:
     st.markdown("## Ferretería La Fe - Sistema 606")
     st.caption("Quisqueya, SPM | Soporte: 829-264-7574")
 
-# --- INVENTARIO REAL FERRETERÍA LA FE ---
+# --- INVENTARIO REAL ---
 if 'inventario' not in st.session_state:
     st.session_state.inventario = pd.DataFrame([
         ["CEM001", "Cemento Panam 94lbs", 550, 120, "Cemento"],
@@ -37,16 +40,20 @@ if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'fiados' not in st.session_state: st.session_state.fiados = []
 if 'ventas_hoy' not in st.session_state: st.session_state.ventas_hoy = 0
 
-# --- MENU ---
-try:
-    st.sidebar.image("logo.png", width=150)
-except:
-    st.sidebar.markdown("### 🧱 La Fe")
-st.sidebar.title("🧱 Ferretería La Fe")
-st.sidebar.caption("Quisqueya, SPM - Sistema 606")
-menu = st.sidebar.radio("Ir a:", ["🛒 Punto de Venta", "🧮 Calculadora Inteligente", "📓 Control de Fiado", "📊 Cierre de Caja"])
-st.sidebar.divider()
-st.sidebar.success("Soporte: 829-264-7574")
+# --- MENU LATERAL - NUNCA FALLA ---
+with st.sidebar:
+    try:
+        st.image("logo.png", width=150)
+    except:
+        try:
+            st.image("logo.jpg", width=150)
+        except:
+            st.markdown("### 🧱 La Fe")
+    st.title("🧱 Ferretería La Fe")
+    st.caption("Quisqueya, SPM - Sistema 606")
+    menu = st.radio("Ir a:", ["🛒 Punto de Venta", "🧮 Calculadora Inteligente", "📓 Control de Fiado", "📊 Cierre de Caja"])
+    st.divider()
+    st.success("Soporte: 829-264-7574")
 
 # 1. PUNTO DE VENTA
 if menu == "🛒 Punto de Venta":
@@ -74,17 +81,14 @@ if menu == "🛒 Punto de Venta":
             itbis = subtotal * 0.18
             total = subtotal + itbis
             st.metric("TOTAL A COBRAR", f"RD$ {total:,.2f}", f"Subtotal RD$ {subtotal:,.0f} + ITBIS")
-            
             tipo_pago = st.selectbox("Pago", ["Efectivo", "Transferencia", "Fiado"])
             if st.button("✅ COBRAR Y FACTURAR CON NCF", type="primary", use_container_width=True):
                 st.session_state.ventas_hoy += total
                 for item in st.session_state.carrito:
                     idx = st.session_state.inventario[st.session_state.inventario["Producto"]==item["Producto"]].index[0]
                     st.session_state.inventario.at[idx, "Stock"] -= item["Cant"]
-                
                 if tipo_pago == "Fiado":
                     st.session_state.fiados.append({"Cliente": "Cliente Mostrador", "Monto": total, "Fecha": str(date.today()), "Productos": str(df_car["Producto"].tolist())})
-                
                 st.success(f"¡Venta registrada! NCF: B01-{datetime.now().strftime('%Y%m%d%H%M')}")
                 st.balloons()
                 st.session_state.carrito = []
@@ -95,9 +99,7 @@ if menu == "🛒 Punto de Venta":
 elif menu == "🧮 Calculadora Inteligente":
     st.title("🧮 Calculadora Inteligente La Fe")
     st.write("Cotiza como un ingeniero y vende todo de una vez")
-    
     obra = st.selectbox("¿Qué va a construir?", ["Pared de Blocks", "Zapata (4 zapatas)", "Piso 10x10", "Casita 3x3 completa"])
-    
     if obra == "Pared de Blocks":
         c1, c2 = st.columns(2)
         largo = c1.number_input("Largo (metros)", 1.0, 100.0, 10.0)
@@ -111,7 +113,6 @@ elif menu == "🧮 Calculadora Inteligente":
             total = blocks*42 + cemento*550 + arena*2500
             st.markdown(f"## Total Cotización La Fe: RD$ {total:,}")
             st.info(f"{blocks} Blocks 6'', {cemento} Cementos, {arena} m3 Arena")
-
     elif obra == "Casita 3x3 completa":
         if st.button("Calcular Casita 3x3"):
             st.markdown("""
@@ -135,7 +136,6 @@ elif menu == "📓 Control de Fiado":
         if st.form_submit_button("Guardar Fiado"):
             st.session_state.fiados.append({"Cliente": cliente, "Monto": monto, "Fecha": str(fecha_pago), "Productos": "Fiado manual"})
             st.success("Fiado guardado")
-    
     if st.session_state.fiados:
         df_fiado = pd.DataFrame(st.session_state.fiados)
         st.dataframe(df_fiado, use_container_width=True)
@@ -153,7 +153,6 @@ elif menu == "📊 Cierre de Caja":
         st.error(f"🚨 FALTAN RD$ {abs(diferencia):,.2f} en caja")
     else:
         st.warning(f"⚠️ SOBRAN RD$ {diferencia:,.2f}")
-    
     st.divider()
     st.subheader("Inventario bajo - Pedir hoy")
     bajo = st.session_state.inventario[st.session_state.inventario["Stock"] < 50]
