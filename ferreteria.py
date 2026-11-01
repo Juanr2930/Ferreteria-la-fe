@@ -2,8 +2,18 @@ import streamlit as st
 import pandas as pd
 from datetime import date, datetime
 
-
 st.set_page_config(page_title="Ferretería La Fe - Sistema 606", layout="wide", page_icon="🧱")
+
+# --- LOGO Y TITULO ---
+col_logo, col_title = st.columns([1, 4])
+with col_logo:
+    try:
+        st.image("logo.png", width=120)
+    except:
+        st.markdown("### 🧱")
+with col_title:
+    st.markdown("## Ferretería La Fe - Sistema 606")
+    st.caption("Quisqueya, SPM | Soporte: 829-264-7574")
 
 # --- INVENTARIO REAL FERRETERÍA LA FE ---
 if 'inventario' not in st.session_state:
@@ -28,6 +38,7 @@ if 'fiados' not in st.session_state: st.session_state.fiados = []
 if 'ventas_hoy' not in st.session_state: st.session_state.ventas_hoy = 0
 
 # --- MENU ---
+st.sidebar.image("logo.png", width=150) if st.session_state.get('inventario') is not None else None
 st.sidebar.title("🧱 Ferretería La Fe")
 st.sidebar.caption("Quisqueya, SPM - Sistema 606")
 menu = st.sidebar.radio("Ir a:", ["🛒 Punto de Venta", "🧮 Calculadora Inteligente", "📓 Control de Fiado", "📊 Cierre de Caja"])
@@ -43,12 +54,13 @@ if menu == "🛒 Punto de Venta":
         if buscador:
             res = st.session_state.inventario[st.session_state.inventario["Producto"].str.contains(buscador, case=False)]
             st.dataframe(res, use_container_width=True)
-            prod_sel = st.selectbox("Selecciona producto", res["Producto"].tolist() if not res.empty else [])
-            cant = st.number_input("Cantidad", 1, 1000, 1)
-            if st.button("➕ Agregar al carrito"):
-                item = res[res["Producto"]==prod_sel].iloc[0]
-                st.session_state.carrito.append({"Producto": prod_sel, "Cant": cant, "Precio": item["Precio RD$"], "Total": cant*item["Precio RD$"]})
-                st.toast(f"{prod_sel} agregado")
+            if not res.empty:
+                prod_sel = st.selectbox("Selecciona producto", res["Producto"].tolist())
+                cant = st.number_input("Cantidad", 1, 1000, 1)
+                if st.button("➕ Agregar al carrito"):
+                    item = res[res["Producto"]==prod_sel].iloc[0]
+                    st.session_state.carrito.append({"Producto": prod_sel, "Cant": cant, "Precio": item["Precio RD$"], "Total": cant*item["Precio RD$"]})
+                    st.toast(f"{prod_sel} agregado")
     
     with col2:
         st.subheader("Factura")
@@ -63,7 +75,6 @@ if menu == "🛒 Punto de Venta":
             tipo_pago = st.selectbox("Pago", ["Efectivo", "Transferencia", "Fiado"])
             if st.button("✅ COBRAR Y FACTURAR CON NCF", type="primary", use_container_width=True):
                 st.session_state.ventas_hoy += total
-                # Descontar stock
                 for item in st.session_state.carrito:
                     idx = st.session_state.inventario[st.session_state.inventario["Producto"]==item["Producto"]].index[0]
                     st.session_state.inventario.at[idx, "Stock"] -= item["Cant"]
@@ -93,18 +104,10 @@ elif menu == "🧮 Calculadora Inteligente":
             blocks = int(m2 * 12.5)
             cemento = int(m2 * 1.2)
             arena = round(m2 * 0.1, 2)
-            alambre = 5
-            
             st.success(f"Para {m2} m2:")
-            st.json({
-                f"{blocks} Blocks 6'' (RD$ {blocks*42})": f"Stock La Fe: {st.session_state.inventario[st.session_state.inventario['Código']=='BLK06']['Stock'].values[0]}",
-                f"{cemento} Cemento Panam (RD$ {cemento*550})": "Disponible",
-                f"{arena} m3 Arena (RD$ {arena*2500})": "Disponible",
-            })
             total = blocks*42 + cemento*550 + arena*2500
             st.markdown(f"## Total Cotización La Fe: RD$ {total:,}")
-            if st.button("📄 Generar PDF Cotización + Enviar por WhatsApp"):
-                st.success("PDF Generado: Cotizacion_La_Fe.pdf con logo y tu 829-264-7574")
+            st.info(f"{blocks} Blocks 6'', {cemento} Cementos, {arena} m3 Arena")
 
     elif obra == "Casita 3x3 completa":
         if st.button("Calcular Casita 3x3"):
@@ -112,7 +115,7 @@ elif menu == "🧮 Calculadora Inteligente":
             ### Lista completa para casita 3x3:
             - **112 Blocks 6''** = RD$ 4,704
             - **15 Cemento Panam** = RD$ 8,250
-            - **2 Varilla 3/8 (20 varillas)** = RD$ 8,400
+            - **20 Varilla 3/8** = RD$ 8,400
             - **2 m3 Arena + 1.5 m3 Grava** = RD$ 9,200
             - **6 Zinc 10ft** = RD$ 4,500
             #### TOTAL: RD$ 35,054
@@ -131,10 +134,9 @@ elif menu == "📓 Control de Fiado":
             st.success("Fiado guardado")
     
     if st.session_state.fiados:
-        st.dataframe(pd.DataFrame(st.session_state.fiados), use_container_width=True)
-        st.warning(f"Total por cobrar en la calle: RD$ {pd.DataFrame(st.session_state.fiados)['Monto'].sum():,}")
-        if st.button("📲 Mandar recordatorio por WhatsApp a todos"):
-            st.success("Mensaje enviado: 'Hola, te recuerda Ferretería La Fe que tienes balance pendiente...'")
+        df_fiado = pd.DataFrame(st.session_state.fiados)
+        st.dataframe(df_fiado, use_container_width=True)
+        st.warning(f"Total por cobrar en la calle: RD$ {df_fiado['Monto'].sum():,}")
 
 # 4. CIERRE
 elif menu == "📊 Cierre de Caja":
