@@ -268,5 +268,73 @@ elif menu=="📓 Fiado":
             """)
 
 elif menu=="📊 Cierre":
-    st.title("📊 Cierre")
-    st.metric("Vendido Hoy", f"RD$ {st.session_state.ventas_hoy:,.2f}")
+    st.title("📊 Cierre de Caja - Ferretería La Fe")
+    st.caption(f"Fecha: {date.today()} | Quisqueya, SPM")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    ventas = st.session_state.ventas_hoy
+    fiados_total = sum([f["Monto"] for f in st.session_state.fiados if f.get("Estado")=="Pendiente"]) if st.session_state.fiados else 0
+    total_dia = ventas + fiados_total
+    
+    with col1:
+        st.metric("💵 Efectivo/Transf", f"RD$ {ventas:,.0f}")
+    with col2:
+        st.metric("📓 Fiado del Día", f"RD$ {fiados_total:,.0f}")
+    with col3:
+        st.metric("📈 Total Movido", f"RD$ {total_dia:,.0f}")
+    with col4:
+        st.metric("🧱 Productos", f"{len(st.session_state.inventario)} tipos")
+    
+    st.divider()
+    
+    c1, c2 = st.columns([2,1])
+    
+    with c1:
+        st.subheader("💰 Cuadre de Caja")
+        efectivo_fisico = st.number_input("¿Cuánto efectivo hay FÍSICO en la gaveta?", min_value=0.0, value=float(ventas), step=100.0, help="Cuenta los billetes que tienes ahora")
+        
+        diferencia = efectivo_fisico - ventas
+        
+        if ventas == 0 and efectivo_fisico == 0:
+            st.info("Aún no hay ventas hoy")
+        elif diferencia == 0:
+            st.success(f"✅ CUADRE PERFECTO - Caja: RD$ {efectivo_fisico:,.0f}")
+            st.balloons()
+        elif diferencia < 0:
+            st.error(f"🚨 FALTAN RD$ {abs(diferencia):,.2f} - Revisa si diste mal el vuelto o un fiado no anotado")
+        else:
+            st.warning(f"⚠️ SOBRAN RD$ {diferencia:,.2f} - ¿Cobraste algo sin registrar?")
+        
+        st.divider()
+        st.subheader("📋 Resumen para el Dueño")
+        st.markdown(f"""
+        - **Ventas cobradas hoy:** RD$ {ventas:,.0f}
+        - **Fiado por cobrar:** RD$ {fiados_total:,.0f}
+        - **Efectivo en gaveta:** RD$ {efectivo_fisico:,.0f}
+        - **Clientes fiados:** {len(st.session_state.fiados)} personas
+        """)
+        
+        if st.button("🔒 Cerrar Día y Reiniciar (para mañana)", type="primary"):
+            st.session_state.ventas_hoy = 0
+            st.success("Día cerrado. Ventas reiniciadas a 0 para mañana. Los fiados se quedan guardados.")
+            st.rerun()
+    
+    with c2:
+        st.subheader("⚠️ Inventario Bajo")
+        st.caption("Pedir HOY al suplidor")
+        bajo = st.session_state.inventario[st.session_state.inventario["Stock"] < 50]
+        if not bajo.empty:
+            st.dataframe(bajo[["Producto","Stock","Precio RD$"]], use_container_width=True)
+            st.error(f"{len(bajo)} productos con stock bajo!")
+        else:
+            st.success("Todo el stock está bien")
+        
+        st.divider()
+        st.subheader("📦 Más Vendido")
+        if st.session_state.carrito:
+            st.write("Última venta registrada")
+        else:
+            st.caption("Hoy no hay detalle de productos aún")
+    
+    st.divider()
+    st.info("💡 Tip: Toma foto a este cierre y mándalo al WhatsApp del dueño todos los días a las 6pm")
