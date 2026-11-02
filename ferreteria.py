@@ -15,7 +15,7 @@ with col_logo:
     show_logo(110)
 with col_title:
     st.markdown("## Ferretería La Fe - Sistema 606")
-    st.caption("Quisqueya, SPM | Calculadora + Lector 606 + Factura")
+    st.caption("Quisqueya, SPM | POS 606 + Factura + Cierre Completo")
 
 def inventario_nuevo():
     return pd.DataFrame([
@@ -42,12 +42,14 @@ if 'ventas_hoy' not in st.session_state: st.session_state.ventas_hoy=0
 if 'ultima_factura' not in st.session_state: st.session_state.ultima_factura=None
 if 'contador_factura' not in st.session_state: st.session_state.contador_factura=1
 if 'calc_temp' not in st.session_state: st.session_state.calc_temp=None
+if 'historial_ventas' not in st.session_state: st.session_state.historial_ventas=[]
 
 def generar_texto_factura(cliente, carrito, subtotal, itbis, total, num_factura):
     fecha = datetime.now().strftime("%d/%m/%Y %I:%M %p")
     lineas = []
     lineas.append("="*42)
     lineas.append("      FERRETERIA LA FE - QUISQUEYA")
+    lineas.append("      San Pedro de Macoris, RD")
     lineas.append("      Tel: 829-264-7574")
     lineas.append("="*42)
     lineas.append(f"FACTURA No: {num_factura:06d}")
@@ -112,7 +114,13 @@ if menu=="🛒 Punto de Venta":
                 texto_fact = generar_texto_factura(cliente_factura, st.session_state.carrito, subtotal, itbis, total, num)
                 st.session_state.ultima_factura = {"texto": texto_fact, "cliente": cliente_factura, "total": total, "num": num}
                 st.session_state.ventas_hoy+=total
+                st.session_state.historial_ventas.append({"Factura": num, "Cliente": cliente_factura, "Total": total, "Fecha": datetime.now().strftime("%H:%M")})
                 st.session_state.contador_factura+=1
+                for item in st.session_state.carrito:
+                    if item.get("Código"):
+                        idx = st.session_state.inventario[st.session_state.inventario["Código"]==item["Código"]].index
+                        if not idx.empty:
+                            st.session_state.inventario.loc[idx, "Stock"] -= item["Cant"]
                 st.session_state.carrito=[]
                 st.balloons()
                 st.rerun()
@@ -121,102 +129,69 @@ if menu=="🛒 Punto de Venta":
             st.download_button("📥 Descargar Factura", st.session_state.ultima_factura["texto"], file_name=f"FACTURA_{st.session_state.ultima_factura['num']:06d}.txt")
 
 elif menu=="📦 Catálogo":
-    st.title("📦 Catálogo")
-    cols=st.columns(3)
-    for i, (idx,row) in enumerate(st.session_state.inventario.iterrows()):
-        with cols[i%3]:
-            with st.container(border=True):
-                st.markdown(f"**{row['Producto']}**")
-                st.code(f"{row['Código']}")
-                st.metric("Precio", f"RD$ {row['Precio RD$']}")
+    st.title("📦 Catálogo - Stock Actual")
+    st.dataframe(st.session_state.inventario[["Código","Producto","Precio RD$","Stock","Cat"]], use_container_width=True)
 
-# --- CALCULADORA ARREGLADA 100% - AHORA SI VA AL CARRITO ---
 elif menu=="🧮 Calculadora Materiales":
-    st.title("🧮 Calculadora Inteligente La Fe - ARREGLADA")
+    st.title("🧮 Calculadora Inteligente")
     obra=st.selectbox("¿Qué va a construir?", ["Pared de Blocks", "Zapata (4 zapatas)", "Piso 10x10 (100 m2)", "Casita 3x3 Completa", "Techo de Zinc 3x3"])
-    
-    # --- PARED ---
     if obra=="Pared de Blocks":
         c1,c2,c3=st.columns(3)
-        largo=c1.number_input("Largo pared (metros)", 1.0, 100.0, 10.0, key="largo_p")
-        alto=c2.number_input("Alto pared (metros)", 1.0, 10.0, 2.5, key="alto_p")
+        largo=c1.number_input("Largo (m)", 1.0, 100.0, 10.0, key="largo_p")
+        alto=c2.number_input("Alto (m)", 1.0, 10.0, 2.5, key="alto_p")
         tipo=c3.selectbox("Tipo Block", ["Block 6'' - RD$42", "Block 4'' - RD$35", "Block 8'' - RD$48"], key="tipo_p")
         precio_block = 42 if "6''" in tipo else (35 if "4''" in tipo else 48)
         if st.button("Calcular Pared", type="primary", key="calc_pared"):
             m2=largo*alto
-            blocks=int(m2*12.5) + 5
-            cemento=int(m2*1.15) + 1
-            arena=round(m2*0.08, 2)
-            varilla=int(m2*1.2)
+            blocks=int(m2*12.5)+5; cemento=int(m2*1.15)+1; arena=round(m2*0.08,2); varilla=int(m2*1.2)
             total=blocks*precio_block + cemento*550 + arena*2500 + varilla*420
-            st.session_state.calc_temp = {"Producto":f"Pared {m2}m2 - {blocks} Blocks {tipo} - {cemento} Cem - {arena}m3 Arena - {varilla} Var","Icono":"🧱","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": f"{m2}m2: {blocks} Blocks, {cemento} Cemento, {arena} Arena, {varilla} Varilla"}
-    
-    # --- ZAPATA ---
+            st.session_state.calc_temp = {"Producto":f"Pared {m2}m2 {blocks} Blocks","Icono":"🧱","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": f"{m2}m2"}
     elif obra=="Zapata (4 zapatas)":
         prof=st.number_input("Profundidad (m)", 0.5, 2.0, 1.0, key="prof_z")
         if st.button("Calcular Zapatas", type="primary", key="calc_zap"):
-            cemento=10; varilla=16; grava=1.0; arena=0.8
-            total=cemento*550 + varilla*420 + grava*2800 + arena*2500
-            st.session_state.calc_temp = {"Producto":f"Zapatas 4x {prof}m - {cemento} Cem {varilla} Var","Icono":"🏗️","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": f"4 zapatas {prof}m"}
-
-    # --- PISO ---
+            total=10*550+16*420+1*2800+0.8*2500
+            st.session_state.calc_temp = {"Producto":f"Zapatas 4x {prof}m","Icono":"🏗️","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": "Zapatas"}
     elif obra=="Piso 10x10 (100 m2)":
         espesor=st.selectbox("Espesor", ["10cm (estándar)", "15cm (pesado)"], key="esp_piso")
         if st.button("Calcular Piso", type="primary", key="calc_piso"):
-            cemento=70 if "10cm" in espesor else 100; arena=7; grava=8
-            total=cemento*550 + arena*2500 + grava*2800
-            st.session_state.calc_temp = {"Producto":f"Piso 10x10 {espesor} - {cemento} Cem","Icono":"🏖️","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": f"Piso 100m2 {espesor}"}
-
-    # --- CASITA ---
+            cemento=70 if "10cm" in espesor else 100
+            total=cemento*550+7*2500+8*2800
+            st.session_state.calc_temp = {"Producto":f"Piso 10x10 {espesor}","Icono":"🏖️","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": "Piso"}
     elif obra=="Casita 3x3 Completa":
         if st.button("Calcular Casita Completa", type="primary", use_container_width=True, key="calc_casita"):
-            st.session_state.calc_temp = {"Producto":"Casita 3x3 Completa - Materiales Completos","Icono":"🏠","Cant":1,"Precio":35839,"Total":35839,"Código":"", "detalle": "Casita 3x3: 112 Blocks, 15 Cemento, 20 Varilla, Arena, Grava, Zinc"}
-
-    # --- TECHO ---
+            st.session_state.calc_temp = {"Producto":"Casita 3x3 Completa - Materiales Completos","Icono":"🏠","Cant":1,"Precio":35839,"Total":35839,"Código":"", "detalle": "Casita 3x3"}
     elif obra=="Techo de Zinc 3x3":
         if st.button("Calcular Techo", type="primary", key="calc_techo"):
-            zinc=6; clavos=2; madera=10
-            total=zinc*750 + clavos*120 + madera*400
-            st.session_state.calc_temp = {"Producto":f"Techo Zinc 3x3 - {zinc} Zinc 10ft","Icono":"🏠","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": f"Techo 3x3 {zinc} laminas"}
+            total=6*750+2*120+10*400
+            st.session_state.calc_temp = {"Producto":f"Techo Zinc 3x3","Icono":"🏠","Cant":1,"Precio":total,"Total":total,"Código":"", "detalle": "Techo"}
 
-    # --- MOSTRAR RESULTADO Y BOTON DE AGREGAR (FUERA DEL IF DE CALCULAR - ASI SI FUNCIONA) ---
     if st.session_state.calc_temp:
-        st.divider()
-        st.success(f"✅ Cotización lista: {st.session_state.calc_temp['detalle']}")
-        st.markdown(f"### TOTAL: RD$ {st.session_state.calc_temp['Total']:,}")
-        if st.button("➕ AGREGAR ESTA COTIZACIÓN AL CARRITO", type="primary", use_container_width=True, key="add_calc_final"):
+        st.success(f"✅ Cotización: {st.session_state.calc_temp['Producto']} - RD$ {st.session_state.calc_temp['Total']:,}")
+        if st.button("➕ AGREGAR AL CARRITO", type="primary", use_container_width=True, key="add_calc_final"):
             st.session_state.carrito.append(st.session_state.calc_temp)
-            st.session_state.calc_temp = None
-            st.success("✅ ¡Agregado al carrito! Baja para cobrar")
+            st.session_state.calc_temp=None
             st.rerun()
 
-    # --- CARRITO Y FACTURA EN LA CALCULADORA ---
     if st.session_state.carrito:
         st.divider()
-        st.subheader("🛒 Carrito Actual")
+        st.subheader("🛒 Carrito")
         for item in st.session_state.carrito:
             st.write(f"{item.get('Icono','')} {item['Producto']} - RD$ {item['Total']:,}")
-        subtotal = sum([x['Total'] for x in st.session_state.carrito])
-        itbis = subtotal * 0.18
-        total = subtotal * 1.18
-        st.metric("TOTAL + ITBIS 18%", f"RD$ {total:,.2f}")
-        cliente_calc = st.text_input("Cliente para factura", value="Cliente Obra", key="cliente_calc_obra_final")
-        if st.button("✅ COBRAR Y GENERAR FACTURA - CALCULADORA", type="primary", use_container_width=True, key="cobrar_calc_final"):
+        subtotal = sum([x['Total'] for x in st.session_state.carrito]); total=subtotal*1.18
+        st.metric("TOTAL + ITBIS", f"RD$ {total:,.2f}")
+        cliente_calc = st.text_input("Cliente", value="Cliente Obra", key="cliente_calc_final")
+        if st.button("✅ COBRAR Y FACTURAR - CALCULADORA", type="primary", use_container_width=True, key="cobrar_calc_final"):
             num = st.session_state.contador_factura
-            texto_fact = generar_texto_factura(cliente_calc, st.session_state.carrito, subtotal, itbis, total, num)
+            texto_fact = generar_texto_factura(cliente_calc, st.session_state.carrito, subtotal, subtotal*0.18, total, num)
             st.session_state.ultima_factura = {"texto": texto_fact, "cliente": cliente_calc, "total": total, "num": num}
             st.session_state.ventas_hoy+=total
+            st.session_state.historial_ventas.append({"Factura": num, "Cliente": cliente_calc, "Total": total, "Fecha": datetime.now().strftime("%H:%M")})
             st.session_state.contador_factura+=1
             st.session_state.carrito=[]
             st.balloons()
-            st.success(f"Factura No {num:06d} generada RD$ {total:,.2f}")
             st.rerun()
-
     if st.session_state.ultima_factura:
-        st.divider()
-        st.markdown("### 🧾 Ultima Factura")
         st.code(st.session_state.ultima_factura["texto"])
-        st.download_button("📥 Descargar Factura TXT", st.session_state.ultima_factura["texto"], file_name=f"FACTURA_{st.session_state.ultima_factura['num']:06d}.txt", key="down_calc_final")
 
 elif menu=="📓 Fiado":
     st.title("📓 Control de Fiado")
@@ -224,27 +199,96 @@ elif menu=="📓 Fiado":
     with col1:
         st.subheader("➕ Nuevo Fiado")
         with st.form("nuevo_fiado", clear_on_submit=True):
-            cliente = st.text_input("Nombre del cliente")
+            cliente = st.text_input("Nombre cliente")
             telefono = st.text_input("Teléfono")
             monto = st.number_input("Monto RD$", min_value=100, max_value=500000, value=5000, step=100)
-            fecha = st.date_input("Fecha fiado", value=date.today())
-            vence = st.date_input("Promesa de pago", value=date.today())
             nota = st.text_input("Qué se llevó")
             guardar = st.form_submit_button("💾 Guardar Fiado", type="primary", use_container_width=True)
             if guardar and cliente:
-                st.session_state.fiados.append({"Cliente": cliente,"Tel": telefono,"Monto": monto,"Fecha": str(fecha),"Vence": str(vence),"Que llevó": nota,"Estado": "Pendiente"})
+                st.session_state.fiados.append({"Cliente": cliente,"Tel": telefono,"Monto": monto,"Que llevó": nota,"Estado": "Pendiente"})
                 st.success(f"✅ Fiado de {cliente} guardado")
     with col2:
         if st.session_state.fiados:
-            df = pd.DataFrame(st.session_state.fiados)
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("📭 No hay fiados aún.")
+            st.dataframe(pd.DataFrame(st.session_state.fiados), use_container_width=True)
 
+# --- CIERRE COMPLETO PROFESIONAL - CON CUADRE, STOCK, INVENTARIO ---
 elif menu=="📊 Cierre":
-    st.title("📊 Cierre de Caja")
+    st.title("📊 Cierre de Caja - Ferretería La Fe")
+    st.caption(f"Fecha: {datetime.now().strftime('%d/%m/%Y %I:%M %p')} | Quisqueya, SPM")
+
     ventas = st.session_state.ventas_hoy
-    st.metric("💵 Efectivo Hoy", f"RD$ {ventas:,.0f}")
-    if st.button("🔒 Cerrar Día", type="primary"):
-        st.session_state.ventas_hoy = 0
-        st.rerun()
+    fiados_total = sum([f["Monto"] for f in st.session_state.fiados if f.get("Estado")=="Pendiente"]) if st.session_state.fiados else 0
+    total_dia = ventas + fiados_total
+    num_facturas = len(st.session_state.historial_ventas)
+
+    # METRICAS ARRIBA
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: st.metric("💵 Efectivo Hoy", f"RD$ {ventas:,.0f}", f"{num_facturas} facturas")
+    with col2: st.metric("📓 Fiado por Cobrar", f"RD$ {fiados_total:,.0f}")
+    with col3: st.metric("📈 Total Día", f"RD$ {total_dia:,.0f}")
+    with col4: st.metric("🧱 Tipos Productos", f"{len(st.session_state.inventario)}")
+
+    st.divider()
+
+    c_izq, c_der = st.columns([1.2, 1])
+
+    with c_izq:
+        st.subheader("💰 Cuadre de Caja - ¿Cuadra o no cuadra?")
+        st.info(f"Sistema dice que vendiste: **RD$ {ventas:,.2f}** en efectivo")
+        
+        efectivo_fisico = st.number_input("¿Cuánto efectivo hay FÍSICO en la caja? (cuenta los billetes)", min_value=0.0, value=float(ventas), step=100.0, key="efectivo_fisico")
+        
+        diferencia = efectivo_fisico - ventas
+        
+        if ventas == 0:
+            st.warning("Aún no hay ventas hoy. Haz una venta en Punto de Venta.")
+        else:
+            if diferencia == 0:
+                st.success(f"✅ ¡CUADRE PERFECTO! RD$ {efectivo_fisico:,.2f} - Todo cuadra nítido")
+                st.balloons()
+            elif diferencia > 0:
+                st.warning(f"⚠️ SOBRA DINERO: RD$ {diferencia:,.2f} - Hay RD$ {diferencia:,.0f} de más en caja (¿propina o error?)")
+            else:
+                st.error(f"❌ FALTA DINERO: RD$ {abs(diferencia):,.2f} - Faltan RD$ {abs(diferencia):,.0f} en caja")
+
+        st.divider()
+        st.subheader("📋 Historial de Ventas de Hoy")
+        if st.session_state.historial_ventas:
+            df_hist = pd.DataFrame(st.session_state.historial_ventas)
+            st.dataframe(df_hist, use_container_width=True)
+        else:
+            st.info("No hay ventas aún hoy")
+
+        if st.button("🔒 Cerrar Día - Poner en 0", type="primary", use_container_width=True):
+            st.session_state.ventas_hoy = 0
+            st.session_state.historial_ventas = []
+            st.success("Día cerrado. Caja en 0 para mañana")
+            st.rerun()
+
+    with c_der:
+        st.subheader("⚠️ Alerta Stock Bajo - ¡Pedir!")
+        # Stock bajo < 50
+        bajo = st.session_state.inventario[st.session_state.inventario["Stock"] < 50].copy()
+        # Stock critico < 20
+        critico = st.session_state.inventario[st.session_state.inventario["Stock"] < 20].copy()
+        
+        if not critico.empty:
+            st.error(f"🚨 CRÍTICO: {len(critico)} productos con menos de 20 unidades")
+            st.dataframe(critico[["Código","Producto","Stock"]], use_container_width=True)
+        elif not bajo.empty:
+            st.warning(f"⚠️ {len(bajo)} productos con stock bajo (<50)")
+            st.dataframe(bajo[["Código","Producto","Stock","Precio RD$"]], use_container_width=True)
+        else:
+            st.success("✅ Todo el stock está bien - No hay productos bajos")
+
+        st.divider()
+        st.subheader("📦 Inventario Completo Actual")
+        st.dataframe(st.session_state.inventario[["Código","Producto","Stock","Precio RD$","Cat"]], use_container_width=True, height=400)
+        
+        # Valor inventario
+        st.session_state.inventario["Valor Total"] = st.session_state.inventario["Stock"] * st.session_state.inventario["Precio RD$"]
+        valor_inv = st.session_state.inventario["Valor Total"].sum()
+        st.metric("💰 Valor Total Inventario", f"RD$ {valor_inv:,.0f}")
+        
+        if st.button("📥 Descargar Inventario Excel"):
+            st.download_button("Descargar CSV", st.session_state.inventario.to_csv(index=False), file_name=f"inventario_la_fe_{date.today()}.csv", mime="text/csv")
