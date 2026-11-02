@@ -16,7 +16,7 @@ with col_logo:
     show_logo(110)
 with col_title:
     st.markdown("## Ferretería La Fe - Sistema 606")
-    st.caption("Quisqueya, SPM | POS 606 + Factura Imprimible 80mm")
+    st.caption("Quisqueya, SPM | Sistema Final 606 - Factura Imprimible")
 
 def inventario_nuevo():
     return pd.DataFrame([
@@ -46,6 +46,17 @@ if 'calc_temp' not in st.session_state: st.session_state.calc_temp=None
 if 'calc_detalle' not in st.session_state: st.session_state.calc_detalle=None
 if 'historial_ventas' not in st.session_state: st.session_state.historial_ventas=[]
 
+# FUNCION PARA AGREGAR SIN DUPLICAR - ESTE ES EL FIX DE TU FOTO
+def agregar_al_carrito(nuevo_item):
+    # Si el producto ya existe, suma cantidad
+    for i, item in enumerate(st.session_state.carrito):
+        if item['Producto'] == nuevo_item['Producto']:
+            st.session_state.carrito[i]['Cant'] += nuevo_item['Cant']
+            st.session_state.carrito[i]['Total'] += nuevo_item['Total']
+            return
+    # Si no existe, lo agrega
+    st.session_state.carrito.append(nuevo_item)
+
 def generar_texto_factura(cliente, carrito, subtotal, itbis, total, num_factura):
     fecha = datetime.now().strftime("%d/%m/%Y %I:%M %p")
     lineas = []
@@ -59,8 +70,8 @@ def generar_texto_factura(cliente, carrito, subtotal, itbis, total, num_factura)
     lineas.append(f"CLIENTE: {cliente}")
     lineas.append("-"*42)
     for item in carrito:
-        lineas.append(f"{item['Cant']} x {item['Producto'][:24]}")
-        lineas.append(f"         RD$ {item['Total']:,}")
+        lineas.append(f"{item['Cant']} x {item['Producto'][:28]}")
+        lineas.append(f"   RD$ {item['Total']:,}")
     lineas.append("-"*42)
     lineas.append(f"SUBTOTAL: RD$ {subtotal:,.2f}")
     lineas.append(f"ITBIS 18%: RD$ {itbis:,.2f}")
@@ -72,30 +83,26 @@ def generar_texto_factura(cliente, carrito, subtotal, itbis, total, num_factura)
     return "\n".join(lineas)
 
 def imprimir_factura_html(texto_factura, num_factura):
-    # HTML para impresora 80mm
     html_code = f"""
     <html>
     <head>
         <style>
             @page {{ size: 80mm auto; margin: 2mm; }}
-            body {{ font-family: 'Courier New', monospace; width: 72mm; font-size: 12px; line-height: 1.2; margin: 0 auto; }}
-            pre {{ white-space: pre-wrap; word-wrap: break-word; font-size: 11px; }}
-            .btn-print {{ background: #FF6B00; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }}
+            body {{ font-family: 'Courier New', monospace; width: 72mm; font-size: 12px; line-height: 1.3; margin: 0 auto; background: white; color: black; }}
+            pre {{ white-space: pre-wrap; word-wrap: break-word; font-size: 12px; margin: 0; }}
+            .btn-print {{ background: #FF6B00; color: white; border: none; padding: 15px 20px; font-size: 18px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }}
             .btn-print:hover {{ background: #e55a00; }}
             @media print {{ .btn-print {{ display: none; }} body {{ width: 80mm; }} }}
         </style>
     </head>
     <body>
         <pre>{texto_factura}</pre>
-        <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR FACTURA {num_factura:06d} - 80mm</button>
-        <script>
-            // Auto imprimir si se quiere
-            // window.print();
-        </script>
+        <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR FACTURA {num_factura:06d}</button>
+        <p style="text-align:center; font-size:10px; margin-top:5px;">Ferreteria La Fe - Sistema 606</p>
     </body>
     </html>
     """
-    components.html(html_code, height=650, scrolling=True)
+    components.html(html_code, height=700, scrolling=True)
 
 with st.sidebar:
     show_logo(150)
@@ -117,7 +124,7 @@ if menu=="🛒 Punto de Venta":
             match = inv[inv["Código"].str.upper().str.strip() == codigo_escaneado.upper().strip()]
             if not match.empty:
                 row = match.iloc[0]
-                st.session_state.carrito.append({"Producto":row['Producto'],"Icono":row['Icono'],"Cant":1,"Precio":row['Precio RD$'],"Total":1*row['Precio RD$'],"Código":row['Código']})
+                agregar_al_carrito({"Producto":row['Producto'],"Icono":row['Icono'],"Cant":1,"Precio":row['Precio RD$'],"Total":1*row['Precio RD$'],"Código":row['Código']})
                 st.rerun()
         st.divider()
         buscador=st.text_input("Busca: cemento, varilla, block...", key="busc_nombre")
@@ -128,14 +135,14 @@ if menu=="🛒 Punto de Venta":
                     st.markdown(f"**{row['Producto']}** - RD$ {row['Precio RD$']} | Stock {row['Stock']}")
                     cant=st.number_input("Cant",1,1000,1,key=f"cant_{row['Código']}")
                     if st.button("Agregar", key=f"add_{row['Código']}"):
-                        st.session_state.carrito.append({"Producto":row['Producto'],"Icono":row['Icono'],"Cant":cant,"Precio":row['Precio RD$'],"Total":cant*row['Precio RD$'],"Código":row['Código']})
+                        agregar_al_carrito({"Producto":row['Producto'],"Icono":row['Icono'],"Cant":cant,"Precio":row['Precio RD$'],"Total":cant*row['Precio RD$'],"Código":row['Código']})
                         st.rerun()
     with c2:
         st.subheader("Factura")
         cliente_factura = st.text_input("Cliente", value="Cliente Mostrador", key="cliente_fact_pos")
         if st.session_state.carrito:
             for item in st.session_state.carrito:
-                st.write(f"{item.get('Icono','')} {item['Producto'][:22]} - RD$ {item['Total']:,}")
+                st.write(f"{item.get('Icono','')} {item['Producto'][:22]} - {item['Cant']} x RD$ {item['Total']:,}")
             subtotal = sum([x['Total'] for x in st.session_state.carrito])
             itbis = subtotal * 0.18
             total = subtotal * 1.18
@@ -155,20 +162,23 @@ if menu=="🛒 Punto de Venta":
                 st.session_state.carrito=[]
                 st.balloons()
                 st.rerun()
-        # FACTURA CON BOTON IMPRIMIR
+            if st.button("🗑️ Vaciar carrito"):
+                st.session_state.carrito=[]
+                st.rerun()
         if st.session_state.ultima_factura:
             st.divider()
-            st.markdown(f"### 🧾 Factura No {st.session_state.ultima_factura['num']:06d}")
-            col_imp1, col_imp2 = st.columns(2)
-            with col_imp1:
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
                 st.download_button("📥 Descargar TXT", st.session_state.ultima_factura["texto"], file_name=f"FACTURA_{st.session_state.ultima_factura['num']:06d}.txt", use_container_width=True)
-            with col_imp2:
-                st.write("Abajo está para imprimir:")
+            with col_d2:
+                if st.button("🗑️ Nueva venta", use_container_width=True):
+                    st.session_state.ultima_factura=None
+                    st.rerun()
             imprimir_factura_html(st.session_state.ultima_factura["texto"], st.session_state.ultima_factura["num"])
 
 elif menu=="📦 Catálogo":
-    st.title("📦 Catálogo - Stock Actual")
-    st.dataframe(st.session_state.inventario[["Código","Producto","Precio RD$","Stock","Cat"]], use_container_width=True)
+    st.title("📦 Catálogo")
+    st.dataframe(st.session_state.inventario[["Código","Producto","Precio RD$","Stock"]], use_container_width=True)
 
 elif menu=="🧮 Calculadora Materiales":
     st.title("🧮 Calculadora Inteligente")
@@ -187,7 +197,7 @@ elif menu=="🧮 Calculadora Materiales":
             detalle_df = pd.DataFrame([
                 [f"🧱 {tipo}", blocks, f"RD$ {precio_block}", f"RD$ {blocks*precio_block:,}"],
                 ["🏗️ Cemento Panam", cemento, "RD$ 550", f"RD$ {cemento*550:,}"],
-                ["🏖️ Arena Lavada", arena, "RD$ 2,500", f"RD$ {int(arena*2500):,}"],
+                ["🏖️ Arena", arena, "RD$ 2,500", f"RD$ {int(arena*2500):,}"],
                 ["🔩 Varilla 3/8", varilla, "RD$ 420", f"RD$ {varilla*420:,}"],
             ], columns=["Material", "Cant. Necesaria", "Precio Unit.", "Subtotal"])
             st.session_state.calc_temp = {"Producto":f"Pared {m2}m2 {blocks} Blocks","Icono":"🧱","Cant":1,"Precio":total,"Total":total,"Código":""}
@@ -251,36 +261,45 @@ elif menu=="🧮 Calculadora Materiales":
         st.dataframe(st.session_state.calc_detalle["df"], use_container_width=True, hide_index=True)
         st.markdown(f"### 💰 TOTAL: RD$ {st.session_state.calc_detalle['total']:,}")
         if st.button("➕ AGREGAR AL CARRITO", type="primary", use_container_width=True, key="add_calc_final_det"):
-            st.session_state.carrito.append(st.session_state.calc_temp)
+            agregar_al_carrito(st.session_state.calc_temp)
+            st.success("✅ Agregado - Si ya estaba, sumó cantidad")
             st.rerun()
 
     if st.session_state.carrito:
         st.divider()
         st.subheader("🛒 Carrito")
         for item in st.session_state.carrito:
-            st.write(f"{item.get('Icono','')} {item['Producto']} - RD$ {item['Total']:,}")
+            st.write(f"{item.get('Icono','')} {item['Producto']} - {item['Cant']} x RD$ {item['Total']:,}")
         subtotal = sum([x['Total'] for x in st.session_state.carrito]); itbis=subtotal*0.18; total=subtotal*1.18
         st.metric("TOTAL + ITBIS", f"RD$ {total:,.2f}")
         cliente_calc = st.text_input("Cliente", value="Cliente Obra", key="cliente_calc_final")
-        if st.button("✅ COBRAR Y FACTURAR - CALCULADORA", type="primary", use_container_width=True, key="cobrar_calc_final_det"):
-            num = st.session_state.contador_factura
-            texto_fact = generar_texto_factura(cliente_calc, st.session_state.carrito, subtotal, itbis, total, num)
-            st.session_state.ultima_factura = {"texto": texto_fact, "cliente": cliente_calc, "total": total, "num": num}
-            st.session_state.ventas_hoy+=total
-            st.session_state.historial_ventas.append({"Factura": num, "Cliente": cliente_calc, "Total": total, "Fecha": datetime.now().strftime("%H:%M")})
-            st.session_state.contador_factura+=1
-            st.session_state.carrito=[]
-            st.balloons()
-            st.rerun()
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            if st.button("✅ COBRAR Y FACTURAR - CALCULADORA", type="primary", use_container_width=True, key="cobrar_calc_final_det"):
+                num = st.session_state.contador_factura
+                texto_fact = generar_texto_factura(cliente_calc, st.session_state.carrito, subtotal, itbis, total, num)
+                st.session_state.ultima_factura = {"texto": texto_fact, "cliente": cliente_calc, "total": total, "num": num}
+                st.session_state.ventas_hoy+=total
+                st.session_state.historial_ventas.append({"Factura": num, "Cliente": cliente_calc, "Total": total, "Fecha": datetime.now().strftime("%H:%M")})
+                st.session_state.contador_factura+=1
+                st.session_state.carrito=[]
+                st.balloons()
+                st.rerun()
+        with col_c2:
+            if st.button("🗑️ Vaciar carrito calculadora", use_container_width=True):
+                st.session_state.carrito=[]
+                st.rerun()
 
     if st.session_state.ultima_factura:
         st.divider()
         st.markdown(f"### 🧾 Factura No {st.session_state.ultima_factura['num']:06d}")
         col_d1, col_d2 = st.columns(2)
         with col_d1:
-            st.download_button("📥 Descargar TXT", st.session_state.ultima_factura["texto"], file_name=f"FACTURA_{st.session_state.ultima_factura['num']:06d}.txt", key="down_calc_det")
+            st.download_button("📥 Descargar TXT", st.session_state.ultima_factura["texto"], file_name=f"FACTURA_{st.session_state.ultima_factura['num']:06d}.txt", key="down_calc_det", use_container_width=True)
         with col_d2:
-            st.caption("Usa el botón naranja abajo para imprimir en 80mm")
+            if st.button("🗑️ Nueva venta", key="nueva_calc", use_container_width=True):
+                st.session_state.ultima_factura=None
+                st.rerun()
         imprimir_factura_html(st.session_state.ultima_factura["texto"], st.session_state.ultima_factura["num"])
 
 elif menu=="📓 Fiado":
@@ -300,7 +319,7 @@ elif menu=="📓 Fiado":
             st.dataframe(pd.DataFrame(st.session_state.fiados), use_container_width=True)
 
 elif menu=="📊 Cierre":
-    st.title("📊 Cierre de Caja - Ferretería La Fe")
+    st.title("📊 Cierre de Caja")
     ventas = st.session_state.ventas_hoy
     fiados_total = sum([f["Monto"] for f in st.session_state.fiados if f.get("Estado")=="Pendiente"]) if st.session_state.fiados else 0
     col1, col2, col3, col4 = st.columns(4)
@@ -334,7 +353,7 @@ elif menu=="📊 Cierre":
         bajo = st.session_state.inventario[st.session_state.inventario["Stock"] < 50]
         if not bajo.empty:
             st.dataframe(bajo[["Código","Producto","Stock"]], use_container_width=True)
-        st.subheader("📦 Inventario Completo")
+        st.subheader("📦 Inventario")
         st.dataframe(st.session_state.inventario[["Código","Producto","Stock","Precio RD$"]], use_container_width=True)
         valor_inv = (st.session_state.inventario["Stock"] * st.session_state.inventario["Precio RD$"]).sum()
         st.metric("Valor Inventario", f"RD$ {valor_inv:,.0f}")
