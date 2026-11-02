@@ -3,76 +3,122 @@ import pandas as pd
 from datetime import date, datetime
 import streamlit.components.v1 as components
 import urllib.parse
+import sqlite3
 
 st.set_page_config(page_title="Ferretería La Fe - Sistema 606 PRO", layout="wide", page_icon="🧱")
 
-# ========== GOOGLE SHEETS PERSISTENCIA ==========
-try:
-    import gspread
-    from oauth2client.service_account import ServiceAccountCredentials
-    GSHEETS_ENABLED = True
-except:
-    GSHEETS_ENABLED = False
+# ========== SQL PERSISTENCIA - REEMPLAZA GOOGLE SHEETS ==========
+DB_FILE = "lafe_606.db"
 
-def get_client():
-    if not GSHEETS_ENABLED: return None
+def get_conn():
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.executescript("""
+    CREATE TABLE IF NOT EXISTS inventario (
+        Código TEXT PRIMARY KEY,
+        Producto TEXT NOT NULL,
+        "Precio RD$" REAL NOT NULL,
+        Stock INTEGER NOT NULL,
+        Cat TEXT,
+        Icono TEXT
+    );
+    CREATE TABLE IF NOT EXISTS fiados (
+        Cliente TEXT,
+        WhatsApp TEXT,
+        WhatsApp_Display TEXT,
+        Monto REAL,
+        Fecha TEXT,
+        Vence TEXT,
+        "Que llevó" TEXT,
+        Estado TEXT
+    );
+    CREATE TABLE IF NOT EXISTS ventas_config (
+        clave TEXT PRIMARY KEY,
+        valor REAL
+    );
+    INSERT OR IGNORE INTO ventas_config (clave, valor) VALUES ('ventas_hoy', 0);
+    INSERT OR IGNORE INTO ventas_config (clave, valor) VALUES ('contador_factura', 1);
+    """)
+    conn.commit()
+    
+    # Si inventario vacio, carga inicial
+    count = cur.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
+    if count == 0:
+        cur.executemany("INSERT INTO inventario VALUES (?,?,?,?,?,?)", [
+            ["CEM001", "Cemento Panam 94lbs", 550, 120, "Cemento", "🏗️"],
+            ["CEM002", "Cemento Cemex", 565, 80, "Cemento", "🏗️"],
+            ["VAR001", "Varilla 3/8 x 20", 420, 200, "Varilla", "🔩"],
+            ["VAR002", "Varilla 1/2 x 20", 680, 150, "Varilla", "🔩"],
+            ["BLK04", "Block 4''", 35, 1000, "Blocks", "🧱"],
+            ["BLK06", "Block 6''", 42, 1500, "Blocks", "🧱"],
+            ["BLK08", "Block 8''", 48, 800, "Blocks", "🧱"],
+            ["ZIN001", "Zinc Acanalado 10ft", 750, 50, "Techo", "🏠"],
+            ["ALAM01", "Alambre Dulce lb", 85, 100, "Alambres", "🪢"],
+            ["CLAV01", "Clavo 2 1/2 lb", 120, 60, "Clavos", "🔨"],
+            ["PINT01", "Pintura Tropical Galón", 1850, 30, "Pintura", "🎨"],
+            ["ARE001", "Arena Lavada m3", 2500, 20, "Agregados", "🏖️"],
+            ["GRAV01", "Grava m3", 2800, 15, "Agregados", "🪨"],
+        ])
+        conn.commit()
+    conn.close()
+
+init_db()
+
+def cargar_sql():
+    conn = get_conn()
     try:
-        scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
-        if "gcp_service_account" in st.secrets:
-            creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
-        else:
-            creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
-        return gspread.authorize(creds)
+        df_inv = pd.read_sql("SELECT * FROM inventario", conn)
+        df_fiados = pd.read_sql("SELECT * FROM fiados", conn)
+        fiados_list = df_fiados.to_dict('records') if not df_fiados.empty else []
+        ventas_row = conn.execute("SELECT valor FROM ventas_config WHERE clave='ventas_hoy'").fetchone()
+        ventas = float(ventas_row[0]) if ventas_row else 0
+        contador_row = conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_factura'").fetchone()
+        contador = int(contador_row[0]) if contador_row else 1
+        conn.close()
+        return df_inv, fiados_list, ventas, contador
     except Exception as e:
-        return None
-
-def cargar_sheets():
-    client = get_client()
-    if not client: return None, None, None
-    try:
-        sh = client.open("LaFe_606_DB")
-        df_inv = pd.DataFrame(sh.worksheet("inventario").get_all_records())
-        fiados = sh.worksheet("fiados").get_all_records()
-        v = sh.worksheet("ventas_hoy").get_all_records()
-        ventas = float(v[0]["ventas_hoy"]) if v else 0
-        return df_inv, fiados, ventas
-    except:
-        return None, None, None
+        conn.close()
+        return None, None, None, None
 
 def save_inv(df):
-    client = get_client()
-    if not client: return
+    conn = get_conn()
     try:
-        sh = client.open("LaFe_606_DB")
-        ws = sh.worksheet("inventario")
-        ws.clear()
-        ws.update([df.columns.values.tolist()] + df.values.tolist())
+        conn.execute("DELETE FROM inventario")
+        df.to_sql("inventario", conn, if_exists="append", index=False)
+        conn.commit()
     except: pass
+    conn.close()
 
 def save_fiados(lista):
-    client = get_client()
-    if not client: return
+    conn = get_conn()
     try:
-        sh = client.open("LaFe_606_DB")
-        ws = sh.worksheet("fiados")
-        if not lista:
-            ws.clear()
-            ws.update([["Cliente","WhatsApp","WhatsApp_Display","Monto","Fecha","Vence","Que llevó","Estado"]])
-            return
-        df = pd.DataFrame(lista)
-        ws.clear()
-        ws.update([df.columns.values.tolist()] + df.values.tolist())
+        conn.execute("DELETE FROM fiados")
+        if lista:
+            pd.DataFrame(lista).to_sql("fiados", conn, if_exists="append", index=False)
+        conn.commit()
     except: pass
+    conn.close()
 
 def save_ventas(monto):
-    client = get_client()
-    if not client: return
+    conn = get_conn()
     try:
-        sh = client.open("LaFe_606_DB")
-        ws = sh.worksheet("ventas_hoy")
-        ws.clear()
-        ws.update([["ventas_hoy"], [monto]])
+        conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('ventas_hoy', ?)", (monto,))
+        conn.commit()
     except: pass
+    conn.close()
+
+def save_contador(num):
+    conn = get_conn()
+    try:
+        conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('contador_factura', ?)", (num,))
+        conn.commit()
+    except: pass
+    conn.close()
 
 def inventario_nuevo():
     return pd.DataFrame([
@@ -93,19 +139,20 @@ def inventario_nuevo():
 
 # CARGAR
 if 'inventario' not in st.session_state:
-    df_s, f_s, v_s = cargar_sheets()
+    df_s, f_s, v_s, c_s = cargar_sql()
     if df_s is not None and not df_s.empty:
         st.session_state.inventario = df_s
         st.session_state.fiados = f_s if f_s else []
         st.session_state.ventas_hoy = v_s if v_s else 0
+        st.session_state.contador_factura = c_s if c_s else 1
     else:
         st.session_state.inventario = inventario_nuevo()
         st.session_state.fiados = []
         st.session_state.ventas_hoy = 0
+        st.session_state.contador_factura = 1
 
 if 'carrito' not in st.session_state: st.session_state.carrito=[]
 if 'ultima_factura' not in st.session_state: st.session_state.ultima_factura=None
-if 'contador_factura' not in st.session_state: st.session_state.contador_factura=1
 if 'historial_ventas' not in st.session_state: st.session_state.historial_ventas=[]
 if 'calc_temp' not in st.session_state: st.session_state.calc_temp=None
 if 'calc_detalle' not in st.session_state: st.session_state.calc_detalle=None
@@ -151,18 +198,18 @@ with col_logo:
     except: st.markdown("### 🧱 La Fe")
 with col_title:
     st.markdown("## Ferretería La Fe - Sistema 606 PRO RD$25k")
-    if get_client(): st.caption("✅ PRO - Datos en la nube Google Sheets | Persistente")
-    else: st.caption("⚠️ Modo Local - Configura Sheets para PRO")
+    st.caption("✅ PRO - Base de datos SQL Local | Persistente | Sin Google Sheets")
 
 with st.sidebar:
     st.title("Ferretería La Fe")
     menu=st.radio("Ir a:",["🛒 Punto de Venta","📦 Catálogo","🧮 Calculadora Materiales","📓 Fiado","📊 Cierre"])
     st.divider()
-    if st.button("💾 Guardar todo en la nube", type="primary", use_container_width=True):
+    if st.button("💾 Guardar todo en SQL", type="primary", use_container_width=True):
         save_inv(st.session_state.inventario)
         save_fiados(st.session_state.fiados)
         save_ventas(st.session_state.ventas_hoy)
-        st.success("✅ Guardado!")
+        save_contador(st.session_state.contador_factura)
+        st.success("✅ Guardado en lafe_606.db!")
     if st.button("🔄 Resetear sistema"):
         st.session_state.clear()
         st.rerun()
@@ -213,9 +260,9 @@ if menu=="🛒 Punto de Venta":
                         idx = st.session_state.inventario[st.session_state.inventario["Código"]==item["Código"]].index
                         if not idx.empty:
                             st.session_state.inventario.loc[idx, "Stock"] -= item["Cant"]
-                # GUARDAR EN LA NUBE AUTOMATICO
                 save_inv(st.session_state.inventario)
                 save_ventas(st.session_state.ventas_hoy)
+                save_contador(st.session_state.contador_factura)
                 st.session_state.carrito=[]
                 st.balloons()
                 st.rerun()
@@ -272,6 +319,7 @@ elif menu=="🧮 Calculadora Materiales":
             st.session_state.ventas_hoy+=total
             st.session_state.contador_factura+=1
             save_ventas(st.session_state.ventas_hoy)
+            save_contador(st.session_state.contador_factura)
             st.session_state.carrito=[]
             st.balloons()
             st.rerun()
@@ -302,7 +350,7 @@ elif menu=="📓 Fiado":
                     else:
                         st.session_state.fiados.append({"Cliente": cliente.strip(),"WhatsApp": num_l,"WhatsApp_Display": f"{num_l[:3]}-{num_l[3:6]}-{num_l[6:]}","Monto": monto,"Fecha": str(fecha),"Vence": str(vence),"Que llevó": nota,"Estado": "Pendiente"})
                         save_fiados(st.session_state.fiados)
-                        st.success(f"✅ Guardado y sincronizado en la nube")
+                        st.success(f"✅ Guardado en SQL")
                         st.balloons()
     with col2:
         st.subheader("📋 Fiados")
@@ -331,7 +379,7 @@ elif menu=="📓 Fiado":
                             st.rerun()
 
 elif menu=="📊 Cierre":
-    st.title("📊 Cierre de Caja PRO")
+    st.title("📊 Cierre de Caja PRO - SQL")
     ventas = st.session_state.ventas_hoy
     fiados_total = sum([f["Monto"] for f in st.session_state.fiados if f.get("Estado")=="Pendiente"]) if st.session_state.fiados else 0
     c1,c2,c3,c4 = st.columns(4)
@@ -355,10 +403,10 @@ elif menu=="📊 Cierre":
             save_ventas(0)
             st.rerun()
     with der:
-        st.subheader("📦 Inventario Editable - PRO")
-        st.caption("EDITA el stock - Se guarda en la nube automáticamente")
+        st.subheader("📦 Inventario Editable - SQL PRO")
+        st.caption("EDITA el stock - Se guarda en lafe_606.db automáticamente")
         df_edit = st.data_editor(st.session_state.inventario[["Código","Producto","Stock","Precio RD$"]], use_container_width=True, num_rows="fixed", column_config={"Stock": st.column_config.NumberColumn("Stock EDITABLE", min_value=0, max_value=10000, step=1), "Precio RD$": st.column_config.NumberColumn("Precio RD$", min_value=0)}, key="editor_stock")
-        if st.button("💾 Guardar cambios de Stock en la nube", type="primary", use_container_width=True):
+        if st.button("💾 Guardar cambios de Stock en SQL", type="primary", use_container_width=True):
             for idx, row in df_edit.iterrows():
                 codigo = row["Código"]
                 real_idx = st.session_state.inventario[st.session_state.inventario["Código"]==codigo].index
@@ -366,7 +414,7 @@ elif menu=="📊 Cierre":
                     st.session_state.inventario.loc[real_idx, "Stock"] = row["Stock"]
                     st.session_state.inventario.loc[real_idx, "Precio RD$"] = row["Precio RD$"]
             save_inv(st.session_state.inventario)
-            st.success("✅ Stock guardado en Google Sheets!")
+            st.success("✅ Stock guardado en SQL!")
             st.rerun()
         st.divider()
         c_fast1, c_fast2, c_fast3 = st.columns([2,1,1])
