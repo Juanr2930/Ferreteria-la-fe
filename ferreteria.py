@@ -291,33 +291,73 @@ elif menu=="🧮 Calculadora Materiales":
         imprimir_factura_html(st.session_state.ultima_factura["texto"], st.session_state.ultima_factura["num"])
 
 elif menu=="📓 Fiado":
-    st.title("📓 Control de Fiado - Con WhatsApp")
+    st.title("📓 Control de Fiado - Con WhatsApp Validado")
+
+    # FUNCION VALIDADORA RD
+    def validar_numero_rd(numero):
+        num_limpio = "".join(filter(str.isdigit, str(numero)))
+        # Quitar el 1 del principio si lo puso
+        if len(num_limpio) == 11 and num_limpio.startswith("1"):
+            num_limpio = num_limpio[1:]
+        if len(num_limpio) != 10:
+            return False, "Debe tener 10 dígitos (ej: 8292647574)", num_limpio
+        prefijos_validos = ["809", "829", "849"]
+        if num_limpio[:3] not in prefijos_validos:
+            return False, f"Prefijo debe ser 809, 829 o 849. Pusiste {num_limpio[:3]}", num_limpio
+        return True, "✅ Número válido", num_limpio
+
     col1, col2 = st.columns([1,2])
     with col1:
         st.subheader("➕ Nuevo Fiado")
         with st.form("nuevo_fiado", clear_on_submit=True):
             cliente = st.text_input("Nombre del cliente *", placeholder="Ej: Juan Perez")
-            telefono = st.text_input("WhatsApp *", placeholder="Ej: 829-264-7574")
+            telefono = st.text_input("WhatsApp *", placeholder="Ej: 829-264-7574", help="10 dígitos, prefijo 809, 829 o 849")
             monto = st.number_input("Monto RD$ *", min_value=100, max_value=500000, value=5000, step=100)
             fecha = st.date_input("Fecha fiado", value=date.today())
             vence = st.date_input("Fecha promesa de pago", value=date.today())
             nota = st.text_input("Qué se llevó", placeholder="Ej: 10 Cemento, 20 Varilla")
             guardar = st.form_submit_button("💾 Guardar Fiado", type="primary", use_container_width=True)
+            
             if guardar:
-                if cliente == "" or telefono == "":
-                    st.error("❌ Pon nombre y WhatsApp")
+                if cliente.strip() == "":
+                    st.error("❌ Pon el nombre del cliente")
+                elif telefono.strip() == "":
+                    st.error("❌ Pon el WhatsApp")
                 else:
-                    st.session_state.fiados.append({
-                        "Cliente": cliente,
-                        "WhatsApp": telefono,
-                        "Monto": monto,
-                        "Fecha": str(fecha),
-                        "Vence": str(vence),
-                        "Que llevó": nota,
-                        "Estado": "Pendiente"
-                    })
-                    st.success(f"✅ Fiado de {cliente} guardado")
-                    st.balloons()
+                    es_valido, mensaje_val, num_limpio = validar_numero_rd(telefono)
+                    if not es_valido:
+                        st.error(f"❌ Número inválido: {mensaje_val}")
+                        st.info("Ejemplo válido: 8292647574 o 809-123-4567")
+                    else:
+                        # Guardar con número limpio
+                        st.session_state.fiados.append({
+                            "Cliente": cliente.strip(),
+                            "WhatsApp": num_limpio,  # Guardamos limpio: 8292647574
+                            "WhatsApp_Display": f"{num_limpio[:3]}-{num_limpio[3:6]}-{num_limpio[6:]}", # Para mostrar bonito
+                            "Monto": monto,
+                            "Fecha": str(fecha),
+                            "Vence": str(vence),
+                            "Que llevó": nota,
+                            "Estado": "Pendiente"
+                        })
+                        st.success(f"✅ Fiado de {cliente} guardado")
+                        st.success(f"📱 WhatsApp validado: {num_limpio[:3]}-{num_limpio[3:6]}-{num_limpio[6:]}")
+                        st.balloons()
+
+        # Validador en vivo fuera del form
+        st.divider()
+        st.caption("🔍 Validador rápido")
+        test_num = st.text_input("Prueba un número antes de guardar", placeholder="829...", key="test_validador")
+        if test_num:
+            es_valido, mensaje_val, num_limpio = validar_numero_rd(test_num)
+            if es_valido:
+                st.success(f"{mensaje_val} - Se guardará como: {num_limpio}")
+                # Preview del link
+                link_preview, _ = generar_link_whatsapp(num_limpio, "Cliente Prueba", 5000, "10 cemento", "hoy")
+                st.caption(f"Link que se generará: wa.me/{num_limpio}")
+            else:
+                st.error(f"{mensaje_val}")
+
     with col2:
         st.subheader("📋 Lista de Fiados")
         if st.session_state.fiados:
@@ -328,14 +368,16 @@ elif menu=="📓 Fiado":
                     c_info, c_ws, c_acc = st.columns([2.5, 1.5, 1])
                     with c_info:
                         estado_color = "🟡" if row.get("Estado")=="Pendiente" else "🟢"
+                        display_num = row.get('WhatsApp_Display', row.get('WhatsApp',''))
                         st.markdown(f"{estado_color} **{row['Cliente']}** - RD$ {row['Monto']:,}")
-                        st.caption(f"📱 {row.get('WhatsApp','Sin número')} | 📦 {row.get('Que llevó','')} | Vence: {row.get('Vence','')}")
+                        st.caption(f"📱 {display_num} | 📦 {row.get('Que llevó','')} | Vence: {row.get('Vence','')}")
                     with c_ws:
                         try:
                             link_ws, num_formateado = generar_link_whatsapp(row.get('WhatsApp',''), row['Cliente'], row['Monto'], row.get('Que llevó','materiales'), row.get('Fecha',''))
                             st.link_button(f"💬 WhatsApp", link_ws, use_container_width=True, type="primary")
+                            st.caption("✅ Validado")
                         except:
-                            st.write("Sin WhatsApp")
+                            st.error("Número inválido")
                     with c_acc:
                         if row.get("Estado") == "Pendiente":
                             if st.button("✅ Cobrado", key=f"cob_{i}", use_container_width=True):
@@ -348,7 +390,7 @@ elif menu=="📓 Fiado":
             st.divider()
             st.dataframe(pd.DataFrame(st.session_state.fiados), use_container_width=True)
         else:
-            st.info("📭 No hay fiados aún.")
+            st.info("📭 No hay fiados aún. Agrega el primero con nombre y WhatsApp válido")
 
 elif menu=="📊 Cierre":
     st.title("📊 Cierre de Caja - Ferretería La Fe")
