@@ -431,5 +431,35 @@ elif menu=="📊 Cierre":
                     save_inv(st.session_state.inventario)
                     st.success(f"✅ Sumaste {cant_entrada}")
                     st.rerun()
+       # ========== BACKUP / RESTORE ==========
+st.sidebar.divider()
+st.sidebar.subheader("💾 Backup SQL")
+
+# Botón para descargar la base de datos completa
+try:
+    with open(DB_FILE, "rb") as f:
+        st.sidebar.download_button(
+            label="📥 Descargar Backup (.db)",
+            data=f,
+            file_name=f"lafe_606_backup_{date.today()}.db",
+            mime="application/octet-stream",
+            use_container_width=True,
+            type="primary"
+        )
+    # Mostrar tamaño
+    import os
+    size_kb = os.path.getsize(DB_FILE) / 1024
+    st.sidebar.caption(f"Tamaño: {size_kb:.1f} KB | {len(st.session_state.inventario)} productos")
+except:
+    st.sidebar.warning("DB aún no creada")
+
+# Para restaurar un backup viejo
+uploaded = st.sidebar.file_uploader("📤 Restaurar Backup", type=["db"])
+if uploaded is not None:
+    with open(DB_FILE, "wb") as f:
+        f.write(uploaded.getbuffer())
+    st.sidebar.success("✅ Backup restaurado! Reiniciando...")
+    st.session_state.clear()
+    st.rerun()
         valor_inv = (st.session_state.inventario["Stock"] * st.session_state.inventario["Precio RD$"]).sum()
         st.metric("💰 Valor Inventario", f"RD$ {valor_inv:,.0f}")
