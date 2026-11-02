@@ -6,6 +6,7 @@ import urllib.parse
 import sqlite3
 import os
 from io import BytesIO
+import hashlib
 
 st.set_page_config(page_title="Ferretería La Fe - Sistema 606 PRO", layout="wide", page_icon="🧱")
 
@@ -41,10 +42,10 @@ def init_db():
     );
     CREATE TABLE IF NOT EXISTS ventas_config (
         clave TEXT PRIMARY KEY,
-        valor REAL
+        valor TEXT
     );
-    INSERT OR IGNORE INTO ventas_config (clave, valor) VALUES ('ventas_hoy', 0);
-    INSERT OR IGNORE INTO ventas_config (clave, valor) VALUES ('contador_factura', 1);
+    INSERT OR IGNORE INTO ventas_config (clave, valor) VALUES ('ventas_hoy', '0');
+    INSERT OR IGNORE INTO ventas_config (clave, valor) VALUES ('contador_factura', '1');
     """)
     conn.commit()
     count = cur.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
@@ -69,6 +70,66 @@ def init_db():
 
 init_db()
 
+# ========== SISTEMA DE LICENCIA 606 PRO RD$25K ==========
+def generar_clave(nombre_negocio, telefono):
+    base = f"606-{nombre_negocio.upper().strip()}-{telefono}-LAFE2026"
+    hash_corto = hashlib.md5(base.encode()).hexdigest().upper()[:12]
+    return f"LAFE-{hash_corto[:4]}-{hash_corto[4:8]}-{hash_corto[8:12]}"
+
+def verificar_licencia():
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT valor FROM ventas_config WHERE clave='licencia_key'").fetchone()
+        row2 = conn.execute("SELECT valor FROM ventas_config WHERE clave='licencia_activa'").fetchone()
+        conn.close()
+        if row2 and row2[0] == "1" and row:
+            return True, row[0]
+        return False, None
+    except:
+        conn.close()
+        return False, None
+
+lic_activa, clave_actual = verificar_licencia()
+
+if not lic_activa:
+    st.markdown("# 🔒 Sistema 606 PRO - RD$ 25,000")
+    st.markdown("### Ferretería La Fe - Activación")
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("🛠️ Generador Admin (Solo tú)")
+        nombre_input = st.text_input("Nombre de la Ferretería cliente", placeholder="Ej: Ferreteria Juan - Quisqueya")
+        tel_input = st.text_input("Teléfono cliente", placeholder="Ej: 8291234567")
+        if st.button("🔑 Generar Clave"):
+            if nombre_input and tel_input:
+                clave_gen = generar_clave(nombre_input, tel_input)
+                st.success(f"Clave para {nombre_input}:")
+                st.code(clave_gen)
+                st.info("Copia y envíasela al cliente")
+            else:
+                st.error("Llena nombre y teléfono")
+    
+    with col2:
+        st.subheader("🔓 Activar Sistema Cliente")
+        clave_cliente = st.text_input("Pega tu Clave de Licencia", placeholder="LAFE-XXXX-XXXX-XXXX", type="password")
+        if st.button("✅ Activar Sistema RD$ 25k", type="primary", use_container_width=True):
+            if clave_cliente.startswith("LAFE-") and len(clave_cliente) == 19:
+                conn = get_conn()
+                conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('licencia_key', ?)", (clave_cliente,))
+                conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('licencia_activa', '1')")
+                conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('negocio_nombre', ?)", (nombre_input if nombre_input else "Cliente 606",))
+                conn.commit()
+                conn.close()
+                st.balloons()
+                st.success("✅ Activado! Recargando...")
+                st.rerun()
+            else:
+                st.error("❌ Clave inválida. Formato LAFE-XXXX-XXXX-XXXX")
+    st.divider()
+    st.caption("Compra: Ferretería La Fe - 829-264-7574 - RD$ 25k - Soporte incluido")
+    st.stop()
+
+# CARGAR ESTADO
 def cargar_sql():
     conn = get_conn()
     try:
@@ -78,7 +139,7 @@ def cargar_sql():
         ventas_row = conn.execute("SELECT valor FROM ventas_config WHERE clave='ventas_hoy'").fetchone()
         ventas = float(ventas_row[0]) if ventas_row else 0
         contador_row = conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_factura'").fetchone()
-        contador = int(contador_row[0]) if contador_row else 1
+        contador = int(float(contador_row[0])) if contador_row else 1
         conn.close()
         return df_inv, fiados_list, ventas, contador
     except:
@@ -109,7 +170,7 @@ def save_fiados(lista):
 def save_ventas(monto):
     conn = get_conn()
     try:
-        conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('ventas_hoy', ?)", (monto,))
+        conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('ventas_hoy', ?)", (str(monto),))
         conn.commit()
     except:
         pass
@@ -118,13 +179,12 @@ def save_ventas(monto):
 def save_contador(num):
     conn = get_conn()
     try:
-        conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('contador_factura', ?)", (num,))
+        conn.execute("INSERT OR REPLACE INTO ventas_config (clave, valor) VALUES ('contador_factura', ?)", (str(num),))
         conn.commit()
     except:
         pass
     conn.close()
 
-# CARGAR ESTADO
 if 'inventario' not in st.session_state:
     df_s, f_s, v_s, c_s = cargar_sql()
     if df_s is not None and not df_s.empty:
@@ -201,7 +261,15 @@ def validar_numero_rd(numero):
         return False, "Prefijo debe ser 809,829,849", num_limpio
     return True, "Válido", num_limpio
 
-# UI HEADER
+# UI HEADER CON LICENCIA
+conn = get_conn()
+try:
+    negocio_nombre_row = conn.execute("SELECT valor FROM ventas_config WHERE clave='negocio_nombre'").fetchone()
+    nombre_mostrar = negocio_nombre_row[0] if negocio_nombre_row else "Ferretería La Fe"
+    conn.close()
+except:
+    nombre_mostrar = "Ferretería La Fe"
+
 col_logo, col_title = st.columns([1,4])
 with col_logo:
     try:
@@ -209,11 +277,12 @@ with col_logo:
     except:
         st.markdown("### 🧱 La Fe")
 with col_title:
-    st.markdown("## Ferretería La Fe - Sistema 606 PRO RD$25k")
-    st.caption("✅ PRO - Base de datos SQL | Sin Google Sheets")
+    st.markdown(f"## {nombre_mostrar} - Sistema 606 PRO")
+    st.caption(f"✅ Licencia Activa: {clave_actual} | PRO - Base de datos SQL")
 
 with st.sidebar:
-    st.title("Ferretería La Fe")
+    st.title(nombre_mostrar)
+    st.success(f"🔒 Licencia: {clave_actual}")
     menu = st.radio("Ir a:", ["🛒 Punto de Venta","📦 Catálogo","🧮 Calculadora Materiales","📓 Fiado","📊 Cierre"])
     st.divider()
     if st.button("💾 Guardar todo en SQL", type="primary", use_container_width=True):
@@ -222,68 +291,38 @@ with st.sidebar:
         save_ventas(st.session_state.ventas_hoy)
         save_contador(st.session_state.contador_factura)
         st.success("✅ Guardado!")
-
     st.divider()
     st.subheader("💾 Backups")
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "rb") as f:
-            st.download_button(
-                label="📥 Backup DB (restaurar)",
-                data=f,
-                file_name=f"lafe_606_backup_{date.today()}.db",
-                mime="application/octet-stream",
-                use_container_width=True
-            )
-        size_kb = os.path.getsize(DB_FILE) / 1024
-        st.caption(f"DB: {size_kb:.1f} KB | {len(st.session_state.inventario)} productos")
-
-        # BOTON EXCEL SIN OPENPYXL - FUNCIONA SEGURO
+            st.download_button(label="📥 Backup DB", data=f, file_name=f"lafe_606_backup_{date.today()}.db", mime="application/octet-stream", use_container_width=True)
         try:
             conn = get_conn()
             df_inv_excel = pd.read_sql("SELECT * FROM inventario", conn)
             df_fiados_excel = pd.read_sql("SELECT * FROM fiados", conn)
             conn.close()
-
-            # Generar CSV que Excel abre sin problema
             csv_inv = df_inv_excel.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📊 Inventario Excel (CSV)",
-                data=csv_inv,
-                file_name=f"Inventario_LaFe_{date.today()}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+            st.download_button(label="📊 Inventario Excel", data=csv_inv, file_name=f"Inventario_{date.today()}.csv", mime="text/csv", use_container_width=True)
             if not df_fiados_excel.empty:
                 csv_fiados = df_fiados_excel.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📓 Fiados Excel (CSV)",
-                    data=csv_fiados,
-                    file_name=f"Fiados_LaFe_{date.today()}.csv",
-                    mime="text/csv",
-                    use_container_width=True,
-                    type="primary"
-                )
+                st.download_button(label="📓 Fiados Excel", data=csv_fiados, file_name=f"Fiados_{date.today()}.csv", mime="text/csv", use_container_width=True, type="primary")
         except Exception as e:
-            st.caption(f"Backup listo: {e}")
-    else:
-        st.warning("DB aún no creada")
-
+            st.caption(f"Error backup: {e}")
     st.divider()
-    st.caption("📤 Restaurar Backup DB")
-    uploaded = st.file_uploader("Sube tu .db", type=["db"], label_visibility="collapsed")
+    st.caption("📤 Restaurar DB")
+    uploaded = st.file_uploader("Sube .db", type=["db"], label_visibility="collapsed")
     if uploaded is not None:
         with open(DB_FILE, "wb") as f:
             f.write(uploaded.getbuffer())
-        st.success("✅ Backup restaurado!")
+        st.success("✅ Restaurado!")
         st.session_state.clear()
         st.rerun()
-
     st.divider()
     if st.button("🔄 Resetear sistema"):
         st.session_state.clear()
         st.rerun()
 
-# PUNTO DE VENTA
+# PUNTO DE VENTA Y DEMAS (igual que antes)
 if menu == "🛒 Punto de Venta":
     c1, c2 = st.columns([2,1])
     with c1:
@@ -344,7 +383,7 @@ if menu == "🛒 Punto de Venta":
             imprimir_factura_html(st.session_state.ultima_factura["texto"], st.session_state.ultima_factura["num"])
 
 elif menu == "📦 Catálogo":
-    st.title("📦 Catálogo - Stock Actual")
+    st.title("📦 Catálogo")
     st.dataframe(st.session_state.inventario[["Código","Producto","Precio RD$","Stock","Cat"]], use_container_width=True)
 
 elif menu == "🧮 Calculadora Materiales":
@@ -403,7 +442,7 @@ elif menu == "📓 Fiado":
                     else:
                         st.session_state.fiados.append({"Cliente": cliente.strip(),"WhatsApp": num_l,"WhatsApp_Display": f"{num_l[:3]}-{num_l[3:6]}-{num_l[6:]}","Monto": monto,"Fecha": str(fecha),"Vence": str(vence),"Que llevó": nota,"Estado": "Pendiente"})
                         save_fiados(st.session_state.fiados)
-                        st.success("✅ Guardado en SQL")
+                        st.success("✅ Guardado")
                         st.balloons()
     with col2:
         st.subheader("📋 Fiados")
@@ -432,7 +471,7 @@ elif menu == "📓 Fiado":
                             st.rerun()
 
 elif menu == "📊 Cierre":
-    st.title("📊 Cierre de Caja PRO - SQL")
+    st.title("📊 Cierre de Caja")
     ventas = st.session_state.ventas_hoy
     fiados_total = sum([f["Monto"] for f in st.session_state.fiados if f.get("Estado")=="Pendiente"]) if st.session_state.fiados else 0
     c1, c2, c3, c4 = st.columns(4)
@@ -463,9 +502,9 @@ elif menu == "📊 Cierre":
             save_ventas(0)
             st.rerun()
     with der:
-        st.subheader("📦 Inventario Editable - SQL PRO")
+        st.subheader("📦 Inventario Editable")
         df_edit = st.data_editor(st.session_state.inventario[["Código","Producto","Stock","Precio RD$"]], use_container_width=True, num_rows="fixed", column_config={"Stock": st.column_config.NumberColumn("Stock EDITABLE", min_value=0, max_value=10000, step=1), "Precio RD$": st.column_config.NumberColumn("Precio RD$", min_value=0)}, key="editor_stock")
-        if st.button("💾 Guardar cambios de Stock en SQL", type="primary", use_container_width=True):
+        if st.button("💾 Guardar Stock en SQL", type="primary", use_container_width=True):
             for idx, row in df_edit.iterrows():
                 codigo = row["Código"]
                 real_idx = st.session_state.inventario[st.session_state.inventario["Código"]==codigo].index
@@ -473,22 +512,7 @@ elif menu == "📊 Cierre":
                     st.session_state.inventario.loc[real_idx, "Stock"] = row["Stock"]
                     st.session_state.inventario.loc[real_idx, "Precio RD$"] = row["Precio RD$"]
             save_inv(st.session_state.inventario)
-            st.success("✅ Stock guardado en SQL!")
+            st.success("✅ Guardado!")
             st.rerun()
-        st.divider()
-        c_fast1, c_fast2, c_fast3 = st.columns([2,1,1])
-        with c_fast1:
-            prod_entrada = st.selectbox("Producto que llegó", st.session_state.inventario["Producto"].tolist())
-        with c_fast2:
-            cant_entrada = st.number_input("Cantidad que llegó", min_value=1, max_value=1000, value=10)
-        with c_fast3:
-            st.write("")
-            if st.button("➕ Sumar", use_container_width=True, type="primary"):
-                idx = st.session_state.inventario[st.session_state.inventario["Producto"]==prod_entrada].index
-                if not idx.empty:
-                    st.session_state.inventario.loc[idx, "Stock"] += cant_entrada
-                    save_inv(st.session_state.inventario)
-                    st.success(f"✅ Sumaste {cant_entrada}")
-                    st.rerun()
         valor_inv = (st.session_state.inventario["Stock"] * st.session_state.inventario["Precio RD$"]).sum()
         st.metric("💰 Valor Inventario", f"RD$ {valor_inv:,.0f}")
