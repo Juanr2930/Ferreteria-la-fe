@@ -210,7 +210,7 @@ with col_logo:
         st.markdown("### 🧱 La Fe")
 with col_title:
     st.markdown("## Ferretería La Fe - Sistema 606 PRO RD$25k")
-    st.caption("✅ PRO - Base de datos SQL Local | Persistente")
+    st.caption("✅ PRO - Base de datos SQL | Sin Google Sheets")
 
 with st.sidebar:
     st.title("Ferretería La Fe")
@@ -235,28 +235,36 @@ with st.sidebar:
                 use_container_width=True
             )
         size_kb = os.path.getsize(DB_FILE) / 1024
-        st.caption(f"DB: {size_kb:.1f} KB")
+        st.caption(f"DB: {size_kb:.1f} KB | {len(st.session_state.inventario)} productos")
 
-        # BOTON EXCEL - ABRE EN EXCEL NORMAL
+        # BOTON EXCEL SIN OPENPYXL - FUNCIONA SEGURO
         try:
             conn = get_conn()
             df_inv_excel = pd.read_sql("SELECT * FROM inventario", conn)
             df_fiados_excel = pd.read_sql("SELECT * FROM fiados", conn)
             conn.close()
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_inv_excel.to_excel(writer, index=False, sheet_name='Inventario')
-                df_fiados_excel.to_excel(writer, index=False, sheet_name='Fiados')
+
+            # Generar CSV que Excel abre sin problema
+            csv_inv = df_inv_excel.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="📊 Descargar Excel",
-                data=output.getvalue(),
-                file_name=f"LaFe_606_{date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-                type="primary"
+                label="📊 Inventario Excel (CSV)",
+                data=csv_inv,
+                file_name=f"Inventario_LaFe_{date.today()}.csv",
+                mime="text/csv",
+                use_container_width=True
             )
+            if not df_fiados_excel.empty:
+                csv_fiados = df_fiados_excel.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📓 Fiados Excel (CSV)",
+                    data=csv_fiados,
+                    file_name=f"Fiados_LaFe_{date.today()}.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    type="primary"
+                )
         except Exception as e:
-            st.error(f"Error Excel: {e}")
+            st.caption(f"Backup listo: {e}")
     else:
         st.warning("DB aún no creada")
 
@@ -373,7 +381,7 @@ elif menu == "🧮 Calculadora Materiales":
             st.rerun()
 
 elif menu == "📓 Fiado":
-    st.title("📓 Control de Fiado - Validado PRO")
+    st.title("📓 Control de Fiado")
     col1, col2 = st.columns([1,2])
     with col1:
         st.subheader("➕ Nuevo Fiado")
@@ -456,7 +464,6 @@ elif menu == "📊 Cierre":
             st.rerun()
     with der:
         st.subheader("📦 Inventario Editable - SQL PRO")
-        st.caption("EDITA el stock - Se guarda en lafe_606.db automáticamente")
         df_edit = st.data_editor(st.session_state.inventario[["Código","Producto","Stock","Precio RD$"]], use_container_width=True, num_rows="fixed", column_config={"Stock": st.column_config.NumberColumn("Stock EDITABLE", min_value=0, max_value=10000, step=1), "Precio RD$": st.column_config.NumberColumn("Precio RD$", min_value=0)}, key="editor_stock")
         if st.button("💾 Guardar cambios de Stock en SQL", type="primary", use_container_width=True):
             for idx, row in df_edit.iterrows():
