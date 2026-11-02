@@ -5,6 +5,7 @@ import streamlit.components.v1 as components
 import urllib.parse
 import sqlite3
 import os
+from io import BytesIO
 
 st.set_page_config(page_title="Ferretería La Fe - Sistema 606 PRO", layout="wide", page_icon="🧱")
 
@@ -209,7 +210,7 @@ with col_logo:
         st.markdown("### 🧱 La Fe")
 with col_title:
     st.markdown("## Ferretería La Fe - Sistema 606 PRO RD$25k")
-    st.caption("✅ PRO - Base de datos SQL Local | Persistente | Sin Google Sheets")
+    st.caption("✅ PRO - Base de datos SQL Local | Persistente")
 
 with st.sidebar:
     st.title("Ferretería La Fe")
@@ -220,30 +221,52 @@ with st.sidebar:
         save_fiados(st.session_state.fiados)
         save_ventas(st.session_state.ventas_hoy)
         save_contador(st.session_state.contador_factura)
-        st.success("✅ Guardado en lafe_606.db!")
+        st.success("✅ Guardado!")
 
     st.divider()
-    st.subheader("💾 Backup SQL")
+    st.subheader("💾 Backups")
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "rb") as f:
             st.download_button(
-                label="📥 Descargar Backup (.db)",
+                label="📥 Backup DB (restaurar)",
                 data=f,
                 file_name=f"lafe_606_backup_{date.today()}.db",
                 mime="application/octet-stream",
+                use_container_width=True
+            )
+        size_kb = os.path.getsize(DB_FILE) / 1024
+        st.caption(f"DB: {size_kb:.1f} KB")
+
+        # BOTON EXCEL - ABRE EN EXCEL NORMAL
+        try:
+            conn = get_conn()
+            df_inv_excel = pd.read_sql("SELECT * FROM inventario", conn)
+            df_fiados_excel = pd.read_sql("SELECT * FROM fiados", conn)
+            conn.close()
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df_inv_excel.to_excel(writer, index=False, sheet_name='Inventario')
+                df_fiados_excel.to_excel(writer, index=False, sheet_name='Fiados')
+            st.download_button(
+                label="📊 Descargar Excel",
+                data=output.getvalue(),
+                file_name=f"LaFe_606_{date.today()}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
                 type="primary"
             )
-        size_kb = os.path.getsize(DB_FILE) / 1024
-        st.caption(f"Tamaño: {size_kb:.1f} KB | {len(st.session_state.inventario)} productos")
+        except Exception as e:
+            st.error(f"Error Excel: {e}")
     else:
         st.warning("DB aún no creada")
 
-    uploaded = st.file_uploader("📤 Restaurar Backup", type=["db"])
+    st.divider()
+    st.caption("📤 Restaurar Backup DB")
+    uploaded = st.file_uploader("Sube tu .db", type=["db"], label_visibility="collapsed")
     if uploaded is not None:
         with open(DB_FILE, "wb") as f:
             f.write(uploaded.getbuffer())
-        st.success("✅ Backup restaurado! Reiniciando...")
+        st.success("✅ Backup restaurado!")
         st.session_state.clear()
         st.rerun()
 
