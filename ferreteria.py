@@ -422,7 +422,7 @@ elif menu=="📓 Fiado":
                             st.rerun()
 
 elif menu=="📊 Cierre":
-    st.title("📊 Cierre de Caja + Reporte Excel")
+    st.title("📊 Cierre de Caja + Reporte Excel PRO")
     ventas=st.session_state.get('ventas_hoy',0)
     fiados_list=st.session_state.get('fiados',[])
     try:
@@ -436,30 +436,63 @@ elif menu=="📊 Cierre":
     c4.metric("Productos",f"{len(st.session_state.inventario)} tipos")
     
     st.divider()
-    st.subheader("📥 Reportes en Excel - Para DGII y Control")
+    st.subheader("📥 Reportes en Excel - Formato Bonito")
 
     def generar_excel_completo_safe(df_inv, fiados_list, ventas_hoy):
+        from openpyxl.styles import Font, PatternFill, Alignment
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             fiados_total_safe = sum([float(f.get("Monto",0)) for f in fiados_list if str(f.get("Estado","")).lower()=="pendiente"]) if fiados_list else 0
             valor_inv = (df_inv["Stock"]*df_inv["Precio"]).sum() if not df_inv.empty else 0
+            
             df_resumen = pd.DataFrame([{
                 "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
                 "Negocio": st.session_state.negocio_nombre,
-                "Ventas Hoy Efectivo": ventas_hoy,
-                "Fiado Por Cobrar": fiados_total_safe,
-                "Total Dia": ventas_hoy + fiados_total_safe,
-                "Valor Inventario": valor_inv,
-                "Factura Actual": st.session_state.contador_factura
+                "Ventas Hoy Efectivo": float(ventas_hoy),
+                "Fiado Por Cobrar": float(fiados_total_safe),
+                "Total Dia": float(ventas_hoy + fiados_total_safe),
+                "Valor Inventario": float(valor_inv),
+                "Factura Actual": int(st.session_state.contador_factura)
             }])
+            
             df_resumen.to_excel(writer, sheet_name='Cierre_Dia', index=False)
             df_inv.to_excel(writer, sheet_name='Inventario', index=False)
+            
             if fiados_list and len(fiados_list) > 0:
                 pd.DataFrame(fiados_list).to_excel(writer, sheet_name='Fiados', index=False)
             else:
                 pd.DataFrame([{"Nota":"No hay fiados registrados aun - Sistema 606"}]).to_excel(writer, sheet_name='Fiados', index=False)
+            
             if st.session_state.carrito:
                 pd.DataFrame(st.session_state.carrito).to_excel(writer, sheet_name='Ultima_Venta', index=False)
+
+            for sheet_name in writer.sheets:
+                ws = writer.sheets[sheet_name]
+                fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
+                for col in range(1, ws.max_column + 1):
+                    cell = ws.cell(row=1, column=col)
+                    cell.font = Font(bold=True, color="FFFFFF", size=11)
+                    cell.fill = fill
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                for column in ws.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 4, 40)
+                    ws.column_dimensions[column_letter].width = adjusted_width
+                if sheet_name == 'Cierre_Dia':
+                    for col_letter in ['C','D','E','F']:
+                        for row in range(2, ws.max_row + 1):
+                            try:
+                                ws[f"{col_letter}{row}"].number_format = '"RD$"#,##0.00'
+                            except:
+                                pass
+
         return output.getvalue()
 
     excel_data = generar_excel_completo_safe(st.session_state.inventario, fiados_list, ventas)
@@ -474,7 +507,7 @@ elif menu=="📊 Cierre":
             type="primary",
             use_container_width=True
         )
-        st.caption("4 hojas: Cierre, Inventario, Fiados, Ultima Venta")
+        st.caption("4 hojas: Cierre, Inventario, Fiados, Ultima Venta - Con RD$ y naranja")
     
     with col_b:
         output_f = BytesIO()
@@ -482,7 +515,7 @@ elif menu=="📊 Cierre":
             if fiados_list and len(fiados_list) > 0:
                 pd.DataFrame(fiados_list).to_excel(writer, sheet_name='Fiados_Por_Cobrar', index=False)
             else:
-                pd.DataFrame([{"Nota":"No hay fiados aun - Agrega uno en Fiado"}]).to_excel(writer, sheet_name='Fiados_Por_Cobrar', index=False)
+                pd.DataFrame([{"Nota":"No hay fiados aun"}]).to_excel(writer, sheet_name='Fiados_Por_Cobrar', index=False)
         st.download_button(
             label="📓 Solo Fiados Excel",
             data=output_f.getvalue(),
