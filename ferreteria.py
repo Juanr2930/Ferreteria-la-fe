@@ -157,11 +157,13 @@ def imprimir_factura_html(texto,num):
     html=f"<html><head><style>@page{{size:80mm auto;margin:2mm}}body{{font-family:Courier;width:72mm;font-size:12px;margin:0 auto}}pre{{white-space:pre-wrap}}.btn{{background:#FF6B00;color:white;border:none;padding:15px;width:100%;font-size:18px;border-radius:10px}}</style></head><body><pre>{texto}</pre><button class='btn' onclick='window.print()'>IMPRIMIR {num:06d}</button></body></html>"
     components.html(html,height=700,scrolling=True)
 
-def generar_link_whatsapp(numero,cliente,monto,llevo,fecha):
-    num="".join(filter(str.isdigit,str(numero)))
+# --- FIX: WHATSAPP CON FECHA DE VENCIMIENTO ---
+def generar_link_whatsapp(numero, cliente, monto, llevo, fecha, vence):
+    num = "".join(filter(str.isdigit,str(numero)))
     if len(num)==10:
         num="1"+num
-    msg=f"Hola {cliente}, balance RD$ {monto:,} - {llevo} - Ferreteria La Fe"
+    # Mensaje mejorado con fecha de vencimiento
+    msg = f"Hola {cliente}, te queda un balance de RD$ {monto:,} por {llevo} del {fecha}. VENCE el {vence}. Por favor pasa por Ferreteria La Fe - Quisqueya. Gracias!"
     return f"https://wa.me/{num}?text={urllib.parse.quote(msg)}",num
 
 def validar_rd(numero):
@@ -407,7 +409,7 @@ elif menu=="📓 Fiado":
                         st.markdown(f"{estado} **{row.get('Cliente','')}** - RD$ {float(row.get('Monto',0)):,}")
                         st.caption(f"📱 {row.get('WhatsApp_Display',row.get('WhatsApp',''))} | Vence: {row.get('Vence','')}")
                     with c_ws:
-                        link_ws,_=generar_link_whatsapp(row.get('WhatsApp',''),row.get('Cliente',''),row.get('Monto',0),row.get('QueLlevo',''),row.get('Fecha',''))
+                        link_ws,_=generar_link_whatsapp(row.get('WhatsApp',''),row.get('Cliente',''),row.get('Monto',0),row.get('QueLlevo',''),row.get('Fecha',''),row.get('Vence',''))
                         st.link_button("WhatsApp",link_ws,use_container_width=True,type="primary")
                     with c_acc:
                         if str(row.get("Estado","")).lower()=="pendiente":
