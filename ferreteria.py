@@ -24,7 +24,6 @@ def init_db():
     INSERT OR IGNORE INTO ventas_config VALUES ('contador_factura','1');
     """)
     conn.commit()
-    # CATALOGO DEFINITIVO COMPLETO 13 PRODUCTOS
     productos_definitivos = [
         ["CEM001","Cemento Panam 94lbs",550,120,"Cemento","🏗️"],
         ["CEM002","Cemento Cemex",565,80,"Cemento","🏗️"],
@@ -44,7 +43,6 @@ def init_db():
     cur.executemany("INSERT INTO inventario VALUES (?,?,?,?,?,?)", productos_definitivos)
     conn.commit()
     conn.close()
-
 init_db()
 
 def generar_clave(n,t):
@@ -74,7 +72,7 @@ if not st.session_state.lic_activa:
                 st.session_state.lic_key=clave.upper()
                 st.session_state.negocio_nombre=st.session_state.get('ultimo_nombre',nom)
                 st.balloons()
-                time.sleep(0.6)
+                time.sleep(0.5)
                 st.rerun()
     st.stop()
 
@@ -170,7 +168,7 @@ def html_codigos_barra(df):
     for _,r in df.iterrows():
         items+=f'<div class="etiqueta"><div class="top"><span class="ico">{r["Icono"]}</span><div><div class="prod">{r["Producto"]}</div><div class="cod">{r["Código"]}</div></div></div><svg class="barcode" jsbarcode-format="CODE128" jsbarcode-value="{r["Código"]}" jsbarcode-textmargin="0" jsbarcode-height="40"></svg></div>'
     items+='<div class="etiqueta libre">- Espacio libre -</div><div class="etiqueta libre">- Espacio libre -</div>'
-    return f'<html><head><script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script><style>@page{{size:A4;margin:10mm}}body{{font-family:Arial}}h2{{text-align:center}}.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}.etiqueta{{border:1px dashed #bbb;border-radius:10px;padding:10px;text-align:center;height:110px}}.top{{display:flex;gap:6px;align-items:center;justify-content:center;font-size:11px;text-align:left}}.prod{{font-size:10px;font-weight:bold}}.cod{{font-weight:900;font-size:12px}}.ico{{font-size:18px}}.libre{{color:#999;display:flex;align-items:center;justify-content:center}}.btn{{background:black;color:white;padding:14px;width:100%;border:none;border-radius:10px;font-size:16px;margin:10px 0;cursor:pointer}}@media print{{.btn{{display:none}}}}</style></head><body><h2>Códigos de Barra - Sistema 606 - Ferretería La Fe - CATALOGO DEFINITIVO</h2><button class="btn" onclick="window.print()">🖨️ IMPRIMIR EN PAPEL ADHESIVO A4</button><div class="grid">{items}</div><p style="font-size:10px;text-align:center">A4 | 3 x 5 etiquetas | Catálogo completo 13 productos | Sistema 606 - Ferreteria La Fe</p><script>JsBarcode(".barcode").init();</script></body></html>'
+    return f'<html><head><script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script><style>@page{{size:A4;margin:10mm}}body{{font-family:Arial}}h2{{text-align:center}}.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}.etiqueta{{border:1px dashed #bbb;border-radius:10px;padding:10px;text-align:center;height:110px}}.top{{display:flex;gap:6px;align-items:center;justify-content:center;font-size:11px;text-align:left}}.prod{{font-size:10px;font-weight:bold}}.cod{{font-weight:900;font-size:12px}}.ico{{font-size:18px}}.libre{{color:#999;display:flex;align-items:center;justify-content:center}}.btn{{background:black;color:white;padding:14px;width:100%;border:none;border-radius:10px;font-size:16px;margin:10px 0;cursor:pointer}}@media print{{.btn{{display:none}}}}</style></head><body><h2>Códigos de Barra - Sistema 606 - Ferretería La Fe</h2><button class="btn" onclick="window.print()">🖨️ IMPRIMIR EN PAPEL ADHESIVO A4</button><div class="grid">{items}</div><p style="font-size:10px;text-align:center">Catálogo completo 13 productos | Sistema 606 - Ferreteria La Fe</p><script>JsBarcode(".barcode").init();</script></body></html>'
 
 with st.sidebar:
     st.title(st.session_state.negocio_nombre)
@@ -189,7 +187,7 @@ if menu=="🛒 Punto de Venta":
     c1,c2=st.columns([2,1])
     with c1:
         st.title("Punto de Venta - Catálogo Completo")
-        cod=st.text_input("Pistolea código de barra",placeholder="Ej: CEM002, VAR002, BLK04, ALAM01, CLAV01, PINT01, ARE001, GRAV01")
+        cod=st.text_input("Pistolea código",placeholder="Ej: CEM002, VAR002, BLK04, ALAM01, CLAV01")
         if st.button("🔎 Buscar Código"):
             inv=st.session_state.inventario
             match=inv[inv["Código"].str.upper().str.strip()==cod.upper().strip()]
@@ -200,9 +198,22 @@ if menu=="🛒 Punto de Venta":
                 st.rerun()
             else:
                 st.error(f"Código {cod} no encontrado")
-        buscador=st.text_input("Busca por nombre (ej: cemex, varilla, block, alambre, clavo, pintura, arena, grava)")
-        if buscador:
-            res=st.session_state.inventario[st.session_state.inventario["Producto"].str.contains(buscador,case=False,na=False)]
+
+        st.divider()
+        buscador=st.text_input("🔍 Busca producto",placeholder="Escribe: cemex, clavo, varilla, block, alambre, pintura, arena, grava")
+        
+        df_inv = st.session_state.inventario.copy()
+        if buscador and buscador.strip() != "":
+            texto = buscador.strip().lower()
+            mask = df_inv["Producto"].str.lower().str.contains(texto, na=False) | df_inv["Código"].str.lower().str.contains(texto, na=False)
+            res = df_inv[mask]
+        else:
+            res = df_inv
+
+        if res.empty:
+            st.warning(f"No se encontró nada con '{buscador}' - Intenta con otra palabra")
+        else:
+            st.caption(f"Mostrando {len(res)} productos")
             for _,row in res.iterrows():
                 with st.container(border=True):
                     st.markdown(f"{row['Icono']} **{row['Producto']}** - RD$ {row['Precio RD$']} | Stock {row['Stock']} | **{row['Código']}**")
@@ -245,25 +256,12 @@ if menu=="🛒 Punto de Venta":
             imprimir_factura_html(st.session_state.ultima_factura["texto"],st.session_state.ultima_factura["num"])
 
 elif menu=="📦 Catálogo COMPLETO":
-    st.title("📦 Catálogo COMPLETO - 13 Productos DEFINITIVO")
-    st.success("Este es el catálogo completo que pediste con todos los faltantes")
+    st.title("📦 Catálogo COMPLETO - 13 Productos")
+    st.success("Catálogo definitivo con CEM002, VAR002, BLK04, BLK08, ALAM01, CLAV01, PINT01, ARE001, GRAV01 incluidos")
     st.dataframe(st.session_state.inventario[["Código","Producto","Precio RD$","Stock","Cat","Icono"]],use_container_width=True,hide_index=True)
-    st.divider()
-    st.subheader("Verificación de productos agregados:")
-    c1,c2,c3=st.columns(3)
-    c1.write("✅ CEM002 - Cemento Cemex")
-    c1.write("✅ VAR002 - Varilla 1/2 x 20")
-    c1.write("✅ BLK04 - Block 4''")
-    c1.write("✅ BLK08 - Block 8''")
-    c2.write("✅ ALAM01 - Alambre Dulce lb")
-    c2.write("✅ CLAV01 - Clavo 2 1/2 lb")
-    c2.write("✅ PINT01 - Pintura Tropical Galón")
-    c3.write("✅ ARE001 - Arena Lavada m3")
-    c3.write("✅ GRAV01 - Grava m3")
 
 elif menu=="🏷️ Códigos de Barra":
-    st.title("🏷️ Códigos de Barra - Catálogo Definitivo")
-    st.info("Hoja completa con los 13 códigos que me pediste, lista para imprimir en A4 adhesivo")
+    st.title("🏷️ Códigos de Barra")
     html=html_codigos_barra(st.session_state.inventario)
     components.html(html,height=900,scrolling=True)
 
