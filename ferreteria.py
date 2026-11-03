@@ -182,39 +182,6 @@ def html_codigos_barra(df):
     items+='<div class="etiqueta libre">- Espacio libre -</div><div class="etiqueta libre">- Espacio libre -</div>'
     return f'<html><head><script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script><style>@page{{size:A4;margin:10mm}}body{{font-family:Arial}}h2{{text-align:center}}.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}.etiqueta{{border:1px dashed #bbb;border-radius:10px;padding:10px;text-align:center;height:110px}}.top{{display:flex;gap:6px;align-items:center;justify-content:center;font-size:11px;text-align:left}}.prod{{font-size:10px;font-weight:bold}}.cod{{font-weight:900;font-size:12px}}.ico{{font-size:18px}}.libre{{color:#999;display:flex;align-items:center;justify-content:center}}.btn{{background:black;color:white;padding:14px;width:100%;border:none;border-radius:10px;font-size:16px;margin:10px 0;cursor:pointer}}@media print{{.btn{{display:none}}}}</style></head><body><h2>Codigos de Barra - Sistema 606</h2><button class="btn" onclick="window.print()">IMPRIMIR A4 ADHESIVO</button><div class="grid">{items}</div><script>JsBarcode(".barcode").init();</script></body></html>'
 
-# FUNCION NUEVA: GENERAR EXCEL
-def generar_excel_completo(df_inv, fiados_list, ventas_hoy):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Hoja 1: Resumen Cierre
-        fiados_total = sum([float(f.get("Monto",0)) for f in fiados_list if str(f.get("Estado","")).lower()=="pendiente"]) if fiados_list else 0
-        valor_inv = (df_inv["Stock"]*df_inv["Precio"]).sum() if not df_inv.empty else 0
-        df_resumen = pd.DataFrame([{
-            "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "Negocio": st.session_state.negocio_nombre,
-            "Ventas Hoy Efectivo": ventas_hoy,
-            "Fiado Por Cobrar": fiados_total,
-            "Total Dia": ventas_hoy + fiados_total,
-            "Valor Inventario": valor_inv,
-            "Factura Actual": st.session_state.contador_factura
-        }])
-        df_resumen.to_excel(writer, sheet_name='Cierre_Dia', index=False)
-        
-        # Hoja 2: Inventario
-        df_inv.to_excel(writer, sheet_name='Inventario', index=False)
-        
-        # Hoja 3: Fiados
-        if fiados_list:
-            pd.DataFrame(fiados_list).to_excel(writer, sheet_name='Fiados', index=False)
-        else:
-            pd.DataFrame([{"Mensaje":"No hay fiados"}]).to_excel(writer, sheet_name='Fiados', index=False)
-            
-        # Hoja 4: Carrito si hay
-        if st.session_state.carrito:
-            pd.DataFrame(st.session_state.carrito).to_excel(writer, sheet_name='Ultima_Venta', index=False)
-
-    return output.getvalue()
-
 with st.sidebar:
     st.title(st.session_state.negocio_nombre)
     st.success(f"🔒 {st.session_state.lic_key}")
@@ -470,11 +437,34 @@ elif menu=="📊 Cierre":
     
     st.divider()
     st.subheader("📥 Reportes en Excel - Para DGII y Control")
+
+    def generar_excel_completo_safe(df_inv, fiados_list, ventas_hoy):
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            fiados_total_safe = sum([float(f.get("Monto",0)) for f in fiados_list if str(f.get("Estado","")).lower()=="pendiente"]) if fiados_list else 0
+            valor_inv = (df_inv["Stock"]*df_inv["Precio"]).sum() if not df_inv.empty else 0
+            df_resumen = pd.DataFrame([{
+                "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "Negocio": st.session_state.negocio_nombre,
+                "Ventas Hoy Efectivo": ventas_hoy,
+                "Fiado Por Cobrar": fiados_total_safe,
+                "Total Dia": ventas_hoy + fiados_total_safe,
+                "Valor Inventario": valor_inv,
+                "Factura Actual": st.session_state.contador_factura
+            }])
+            df_resumen.to_excel(writer, sheet_name='Cierre_Dia', index=False)
+            df_inv.to_excel(writer, sheet_name='Inventario', index=False)
+            if fiados_list and len(fiados_list) > 0:
+                pd.DataFrame(fiados_list).to_excel(writer, sheet_name='Fiados', index=False)
+            else:
+                pd.DataFrame([{"Nota":"No hay fiados registrados aun - Sistema 606"}]).to_excel(writer, sheet_name='Fiados', index=False)
+            if st.session_state.carrito:
+                pd.DataFrame(st.session_state.carrito).to_excel(writer, sheet_name='Ultima_Venta', index=False)
+        return output.getvalue()
+
+    excel_data = generar_excel_completo_safe(st.session_state.inventario, fiados_list, ventas)
+    
     col_a, col_b, col_c = st.columns(3)
-    
-    # Generar excel completo
-    excel_data = generar_excel_completo(st.session_state.inventario, fiados_list, ventas)
-    
     with col_a:
         st.download_button(
             label="📊 EXCEL COMPLETO DEL DIA",
@@ -487,11 +477,12 @@ elif menu=="📊 Cierre":
         st.caption("4 hojas: Cierre, Inventario, Fiados, Ultima Venta")
     
     with col_b:
-        # Solo fiados
         output_f = BytesIO()
         with pd.ExcelWriter(output_f, engine='openpyxl') as writer:
-            if fiados_list:
+            if fiados_list and len(fiados_list) > 0:
                 pd.DataFrame(fiados_list).to_excel(writer, sheet_name='Fiados_Por_Cobrar', index=False)
+            else:
+                pd.DataFrame([{"Nota":"No hay fiados aun - Agrega uno en Fiado"}]).to_excel(writer, sheet_name='Fiados_Por_Cobrar', index=False)
         st.download_button(
             label="📓 Solo Fiados Excel",
             data=output_f.getvalue(),
