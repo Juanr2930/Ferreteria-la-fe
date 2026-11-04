@@ -185,7 +185,7 @@ def html_codigos_barra(df):
 with st.sidebar:
     st.title(st.session_state.negocio_nombre)
     st.success(f"🔒 {st.session_state.lic_key}")
-    menu=st.radio("Ir a:", ["🛒 Punto de Venta","📦 Catalogo COMPLETO","🏷️ Codigos de Barra","🧮 Calculadora Materiales","📓 Fiado","📊 Cierre"])
+    menu=st.radio("Ir a:", ["🛒 Punto de Venta","📦 Catalogo COMPLETO","🏷️ Codigos de Barra","🧮 Calculadora Materiales","📓 Fiado","📊 Cierre","🔍 Ver Base de Datos SQL"])
     st.divider()
     if st.button("💾 Guardar en SQL",type="primary",use_container_width=True):
         save_inv(st.session_state.inventario)
@@ -572,3 +572,64 @@ elif menu=="📊 Cierre":
             st.metric("Valor Inventario",f"RD$ {valor_inv:,.0f}")
         except Exception as e:
             st.error(f"Error: {e}")
+
+elif menu=="🔍 Ver Base de Datos SQL":
+    st.title("🔍 Base de Datos SQL - La Fe 606")
+    st.caption("Vista minimalista - igual que tu Excel de Yuliana | Archivo: lafe_606.db")
+    conn = get_conn()
+    try:
+        total_prod = conn.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
+        total_fiados = conn.execute("SELECT COUNT(*) FROM fiados").fetchone()[0]
+        total_stock = conn.execute("SELECT SUM(Stock) FROM inventario").fetchone()[0] or 0
+        valor_inv = conn.execute("SELECT SUM(Stock*Precio) FROM inventario").fetchone()[0] or 0
+        ventas_hoy_db = conn.execute("SELECT valor FROM ventas_config WHERE clave='ventas_hoy'").fetchone()[0]
+        contador_db = conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_factura'").fetchone()[0]
+    except Exception as e:
+        total_prod, total_fiados, total_stock, valor_inv = 0,0,0,0
+        ventas_hoy_db, contador_db = "0","1"
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("📦 Productos", total_prod)
+    c2.metric("📓 Fiados", total_fiados)
+    c3.metric("📊 Stock Total", f"{total_stock:,}")
+    c4.metric("💰 Valor Inventario", f"RD$ {valor_inv:,.0f}")
+    st.caption(f"Ventas Hoy: RD$ {float(ventas_hoy_db):,.0f} | Proxima Factura: {int(float(contador_db)):06d}")
+    st.divider()
+    tabla = st.selectbox("Elige tabla:", ["inventario", "fiados", "ventas_config"])
+    buscar = st.text_input("🔎 Buscar en esta tabla...", placeholder="Ej: cemento, varilla, Juan, CEM001...")
+    try:
+        df_sql = pd.read_sql(f"SELECT * FROM {tabla}", conn)
+        if buscar:
+            mask = df_sql.astype(str).apply(lambda x: x.str.contains(buscar, case=False, na=False)).any(axis=1)
+            df_sql = df_sql[mask]
+        st.write(f"**{len(df_sql)} filas** en `{tabla}`")
+        st.dataframe(df_sql, use_container_width=True, hide_index=True)
+        col_d, col_e = st.columns(2)
+        with col_d:
+            csv = df_sql.to_csv(index=False).encode('utf-8')
+            st.download_button(f"⬇️ Descargar {tabla} CSV", data=csv, file_name=f"{tabla}_lafe606.csv", mime="text/csv", use_container_width=True)
+        with col_e:
+            if st.button("🔄 Recargar desde SQL", use_container_width=True):
+                st.rerun()
+        with st.expander("💻 Consultas SQL rapidas - Tu base real"):
+            st.code(f"""-- Ver todo
+SELECT * FROM {tabla};
+
+-- Tus productos mas caros
+SELECT Codigo, Producto, Precio, Stock FROM inventario ORDER BY Precio DESC;
+
+-- Stock bajo (menos de 20)
+SELECT * FROM inventario WHERE Stock < 20;
+
+-- Fiados pendientes
+SELECT Cliente, Monto, Vence FROM fiados WHERE Estado='Pendiente';
+
+-- Valor total inventario
+SELECT SUM(Stock*Precio) as Valor FROM inventario;
+""", language="sql")
+        if st.checkbox("Ver como SQL crudo"):
+            st.code(df_sql.to_string(), language="text")
+    except Exception as e:
+        st.error(f"Error: {e}")
+    conn.close()
+    st.divider()
+    st.info("💡 Tip: Esta vista lee directo de lafe_606.db. Si cambias algo en Inventario Editable y le das Guardar en SQL, aqui se refleja al instante.")
