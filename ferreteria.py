@@ -8,12 +8,12 @@ from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
 
-# ===== FONDO BONITO CORREGIDO + CALENDARIO ARREGLADO =====
+# ===== FONDO BONITO + FORZAR MODO CLARO =====
 st.markdown("""
 <style>
-.stApp {
-    background: #EAF6FF !important;
-}
+:root { color-scheme: light !important; }
+html, body { background: #EAF6FF !important; color-scheme: light !important; }
+.stApp { background: #EAF6FF !important; }
 .main .block-container {
     background: #FFFFFF;
     border-radius: 18px;
@@ -21,26 +21,14 @@ st.markdown("""
     margin-top: 10px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
-.stApp, .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 {
-    color: #1A2A3A !important;
-}
-h1, h2, h3 {
-    color: #0B2C4A !important;
-    font-weight: 900 !important;
-}
-p, span, label {
-    color: #1A2A3A !important;
-}
-section[data-testid="stSidebar"] {
-    background: #0B2C4A !important;
-}
+.stApp, .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 { color: #1A2A3A !important; }
+h1, h2, h3 { color: #0B2C4A !important; font-weight: 900 !important; }
+section[data-testid="stSidebar"] { background: #0B2C4A !important; }
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span {
-    color: white !important;
-}
+section[data-testid="stSidebar"] span { color: white !important; }
 section[data-testid="stSidebar"] div[role="radiogroup"] label {
     background: #143A5A !important;
     border-radius: 10px !important;
@@ -48,126 +36,41 @@ section[data-testid="stSidebar"] div[role="radiogroup"] label {
     margin-bottom: 8px !important;
 }
 section[data-testid="stSidebar"] div[role="radiogroup"] label p,
-section[data-testid="stSidebar"] div[role="radiogroup"] label span {
-    color: white !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
-}
-section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-    background: #FF6B00 !important;
-}
+section[data-testid="stSidebar"] div[role="radiogroup"] label span { color: white !important; font-weight: 700 !important; font-size: 15px !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: #FF6B00 !important; }
 .stTextInput input, .stNumberInput input, .stSelectbox input, textarea {
     color: #000000 !important;
     background: white !important;
     border: 2px solid #A5D8FF !important;
     border-radius: 10px !important;
+    color-scheme: light !important;
 }
-.stTextInput label, .stNumberInput label, .stSelectbox label {
-    color: #0B2C4A !important;
-    font-weight: 700 !important;
-}
-div[data-baseweb="select"] span {
-    color: #000000 !important;
-}
-input::placeholder {
-    color: #7A8A9A !important;
-}
-.stButton > button[kind="primary"] {
-    background: #FF6B00 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    font-weight: 800 !important;
-}
-.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span {
-    color: white !important;
-}
-.stButton > button {
-    background: white !important;
-    color: #0B2C4A !important;
-    border: 2px solid #FF6B00 !important;
-    border-radius: 12px !important;
-    font-weight: 700 !important;
-}
-.stButton > button p, .stButton > button span {
-    color: #0B2C4A !important;
-}
-div[data-testid="stMetric"] {
-    background: #F0F9FF !important;
-    padding: 15px;
-    border-radius: 12px;
-    border-left: 5px solid #FF6B00;
-}
-div[data-testid="stMetric"] label, div[data-testid="stMetric"] div {
-    color: #0B2C4A !important;
-}
-div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span {
-    color: #1A2A3A !important;
-}
-.stExpander summary p, .stExpander summary span {
-    color: #0B2C4A !important;
-}
+.stTextInput label, .stNumberInput label, .stSelectbox label { color: #0B2C4A !important; font-weight: 700 !important; }
+div[data-baseweb="select"] span { color: #000000 !important; }
+input::placeholder { color: #7A8A9A !important; }
+.stButton > button[kind="primary"] { background: #FF6B00 !important; color: white !important; border: none !important; border-radius: 12px !important; font-weight: 800 !important; }
+.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span { color: white !important; }
+.stButton > button { background: white !important; color: #0B2C4A !important; border: 2px solid #FF6B00 !important; border-radius: 12px !important; font-weight: 700 !important; }
+.stButton > button p, .stButton > button span { color: #0B2C4A !important; }
+div[data-testid="stMetric"] { background: #F0F9FF !important; padding: 15px; border-radius: 12px; border-left: 5px solid #FF6B00; }
+div[data-testid="stMetric"] label, div[data-testid="stMetric"] div { color: #0B2C4A !important; }
+div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span { color: #1A2A3A !important; }
 
-/* ===== ARREGLO CALENDARIO / FECHAS ===== */
-.stDateInput input {
-    color: #000000 !important;
-    background: white !important;
-    border: 2px solid #A5D8FF !important;
-}
-.stDateInput label {
-    color: #0B2C4A !important;
-    font-weight: 700 !important;
-}
-.stDateInput svg {
-    fill: #0B2C4A !important;
-    color: #0B2C4A !important;
-    opacity: 1 !important;
-}
-div[data-baseweb="popover"], div[data-baseweb="calendar"], div[data-baseweb="menu"] {
-    background: white !important;
-    color: #000000 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
-}
-div[data-baseweb="calendar"] * {
-    color: #000000 !important;
-    background: white !important;
-}
-div[data-baseweb="calendar"] div[role="heading"],
-div[data-baseweb="calendar"] button {
-    color: #0B2C4A !important;
-    background: white !important;
-}
-div[data-baseweb="calendar"] th, div[data-baseweb="calendar"] thead td {
-    color: #0B2C4A !important;
-    font-weight: 800 !important;
-}
-div[data-baseweb="calendar"] td div, div[data-baseweb="calendar"] td span {
-    color: #000000 !important;
-    background: white !important;
-}
-div[data-baseweb="calendar"] td[aria-selected="true"] div,
-div[data-baseweb="calendar"] td[aria-selected="true"] span {
-    background: #FF6B00 !important;
-    color: white !important;
-    border-radius: 50% !important;
-}
-div[data-baseweb="calendar"] td div:hover {
-    background: #EAF6FF !important;
-    color: #000000 !important;
-}
-div[data-baseweb="calendar"] svg {
-    fill: #0B2C4A !important;
-    color: #0B2C4A !important;
-}
-div[data-baseweb="popover"] > div {
-    background: white !important;
-}
+/* Quitar calendario nativo negro - ya no se usa */
+input[type="date"] { color-scheme: light !important; background: white !important; color: black !important; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0) !important; opacity: 1 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 DB_FILE = "lafe_606.db"
 CLAVE_JEFE = "6060"
+
+# ===== NUEVA FUNCION DE FECHA SIN CALENDARIO NEGRO =====
+def fecha_input(label, key):
+    # En vez de calendario, se escribe 06/11/2026 - asi no sale el cuadro negro
+    hoy = date.today().strftime("%d/%m/%Y")
+    valor = st.text_input(label, value=hoy, placeholder="DD/MM/AAAA Ej: 06/11/2026", key=key)
+    return valor
 
 def get_conn():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
@@ -491,7 +394,7 @@ elif menu=="👥 Clientes":
             tel_c=st.text_input("Telefono", placeholder="829-264-7574")
             wa_c=st.text_input("WhatsApp", placeholder="8292647574")
             dir_c=st.text_input("Direccion", placeholder="Quisqueya, San Pedro")
-            fecha_c=st.date_input("Fecha Registro", value=date.today())
+            fecha_c = fecha_input("Fecha Registro", "fecha_cli")
             guardar_c=st.form_submit_button("Guardar Cliente",type="primary",use_container_width=True)
             if guardar_c:
                 if nom_c.strip()=="":
@@ -731,8 +634,8 @@ elif menu=="📓 Fiado":
             cliente=st.text_input("Nombre *",placeholder="Juan Perez")
             telefono=st.text_input("WhatsApp *",placeholder="829-264-7574")
             monto=st.number_input("Monto RD$ *",min_value=100,value=5000,step=100)
-            fecha=st.date_input("Fecha fiado",value=date.today())
-            vence=st.date_input("Vence",value=date.today())
+            fecha = fecha_input("Fecha fiado", "fecha_fiado")
+            vence = fecha_input("Vence", "fecha_vence")
             nota=st.text_input("Que se llevo",placeholder="10 Cemento")
             guardar=st.form_submit_button("Guardar Fiado",type="primary",use_container_width=True)
             if guardar:
