@@ -8,16 +8,25 @@ from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
 
-# ===== FONDO BLANCO + CUADROS AZULES BONITOS =====
+# ===== FONDO BLANCO + CUADROS AZULES - LETRA SI SE VE =====
 st.markdown("""
 <style>
 :root { color-scheme: light !important; }
 html, body { background: #FFFFFF !important; }
-/* Fondo general BLANCO */
 .stApp {
     background: #FFFFFF !important;
+    color: #1A2A3A !important;
 }
-/* Cuadros principales AZULES BONITOS */
+/* Por defecto TODO en NEGRO para que se vea en fondo blanco */
+.stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 {
+    color: #1A2A3A !important;
+}
+h1, h2, h3 {
+    color: #0B2C4A !important;
+    font-weight: 900 !important;
+}
+
+/* ===== SOLO DENTRO DE LOS CUADROS AZULES LA LETRA ES BLANCA ===== */
 .main .block-container {
     background: #143A5A !important;
     border-radius: 18px;
@@ -26,27 +35,28 @@ html, body { background: #FFFFFF !important; }
     border: 1px solid #2A5A8A !important;
     box-shadow: 0 4px 20px rgba(0,0,0,0.10) !important;
 }
-/* TODA LA LETRA DENTRO DE LOS CUADROS ES BLANCA */
-.stApp, .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 {
+.main .block-container p,
+.main .block-container span,
+.main .block-container label,
+.main .block-container div,
+.main .block-container h1,
+.main .block-container h2,
+.main .block-container h3,
+.main .block-container h4 {
     color: white !important;
 }
-h1, h2, h3 {
-    color: white !important;
-    font-weight: 900 !important;
-}
-p, span, label {
-    color: white !important;
-}
-/* Sidebar AZUL OSCURO */
+
+/* Sidebar AZUL OSCURO - letra blanca */
 section[data-testid="stSidebar"] {
     background: #0B2C4A !important;
-    border-right: 2px solid #143A5A !important;
 }
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span {
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] div {
     color: white !important;
 }
 section[data-testid="stSidebar"] div[role="radiogroup"] label {
@@ -65,7 +75,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] label span {
 section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
     background: #FF6B00 !important;
 }
-/* Inputs - FONDO BLANCO, LETRA NEGRA para que se vea lo que escribes */
+/* Inputs - SIEMPRE fondo blanco letra negra */
 .stTextInput input, .stNumberInput input, .stSelectbox input, textarea {
     color: #000000 !important;
     background: white !important;
@@ -86,7 +96,6 @@ div[data-baseweb="select"] span {
 input::placeholder {
     color: #7A8A9A !important;
 }
-/* Seleccion naranja, no azul feo */
 ::selection {
     background: #FF6B00 !important;
     color: white !important;
@@ -112,7 +121,7 @@ input::placeholder {
 .stButton > button p, .stButton > button span {
     color: white !important;
 }
-/* Metricas - AZUL MAS CLARO */
+/* Metricas - AZUL MAS CLARO, letra blanca */
 div[data-testid="stMetric"] {
     background: #1E4A7A !important;
     padding: 15px;
@@ -120,10 +129,11 @@ div[data-testid="stMetric"] {
     border-left: 5px solid #FF6B00;
     border: 1px solid #2A5A8A !important;
 }
-div[data-testid="stMetric"] label, div[data-testid="stMetric"] div {
+div[data-testid="stMetric"] label, div[data-testid="stMetric"] div,
+div[data-testid="stMetric"] p, div[data-testid="stMetric"] span {
     color: white !important;
 }
-/* Dataframe - FONDO BLANCO para que se lea */
+/* Dataframe - FONDO BLANCO letra negra */
 div[data-testid="stDataFrame"] {
     background: white !important;
     border-radius: 10px !important;
@@ -131,7 +141,7 @@ div[data-testid="stDataFrame"] {
 div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span {
     color: #000000 !important;
 }
-/* Alertas - Sistema dice / CUADRE PERFECTO - AZUL BONITO */
+/* Alertas - AZUL BONITO letra blanca */
 div[data-testid="stAlert"] {
     background: #1E4A7A !important;
     color: white !important;
@@ -141,11 +151,14 @@ div[data-testid="stAlert"] {
 div[data-testid="stAlert"] p, div[data-testid="stAlert"] span, div[data-testid="stAlert"] div {
     color: white !important;
 }
-/* Contenedores con borde - AZULES */
+/* Contenedores - AZULES letra blanca */
 div[data-testid="stContainer"] {
     background: #1E4A7A !important;
     border: 1px solid #2A5A8A !important;
     border-radius: 12px !important;
+}
+div[data-testid="stContainer"] p, div[data-testid="stContainer"] span, div[data-testid="stContainer"] label, div[data-testid="stContainer"] div {
+    color: white !important;
 }
 .stExpander summary p, .stExpander summary span {
     color: white !important;
