@@ -55,19 +55,14 @@ input::placeholder { color: #7A8A9A !important; }
 div[data-testid="stMetric"] { background: #F0F9FF !important; padding: 15px; border-radius: 12px; border-left: 5px solid #FF6B00; }
 div[data-testid="stMetric"] label, div[data-testid="stMetric"] div { color: #0B2C4A !important; }
 div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span { color: #1A2A3A !important; }
-
-/* Quitar calendario nativo negro - ya no se usa */
 input[type="date"] { color-scheme: light !important; background: white !important; color: black !important; }
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0) !important; opacity: 1 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 DB_FILE = "lafe_606.db"
 CLAVE_JEFE = "6060"
 
-# ===== NUEVA FUNCION DE FECHA SIN CALENDARIO NEGRO =====
 def fecha_input(label, key):
-    # En vez de calendario, se escribe 06/11/2026 - asi no sale el cuadro negro
     hoy = date.today().strftime("%d/%m/%Y")
     valor = st.text_input(label, value=hoy, placeholder="DD/MM/AAAA Ej: 06/11/2026", key=key)
     return valor
@@ -218,10 +213,10 @@ if 'carrito' not in st.session_state:
     st.session_state.carrito=[]
 if 'ultima_factura' not in st.session_state:
     st.session_state.ultima_factura=None
-if 'calc_temp' not in st.session_state:
-    st.session_state.calc_temp=None
 if 'calc_detalle' not in st.session_state:
     st.session_state.calc_detalle=None
+if 'calc_items' not in st.session_state:
+    st.session_state.calc_items=[]
 if 'cliente_seleccionado' not in st.session_state:
     st.session_state.cliente_seleccionado="Cliente Mostrador"
 if 'rnc_seleccionado' not in st.session_state:
@@ -336,11 +331,10 @@ if menu=="🛒 Punto de Venta":
                         st.rerun()
     with c2:
         st.subheader("3️⃣ Carrito - Puedes Editar Aqui")
-        st.caption("Cambia cantidad o quita algo antes de facturar. Nada se factura solo.")
         if st.session_state.carrito:
             for idx, it in enumerate(list(st.session_state.carrito)):
                 with st.container(border=True):
-                    st.write(f"{it.get('Icono','')} **{it['Producto'][:28]}**")
+                    st.write(f"{it.get('Icono','')} **{it['Producto'][:32]}**")
                     cc1, cc2, cc3 = st.columns([2,1,1])
                     with cc1:
                         nueva_cant = st.number_input("Cant", min_value=1, max_value=1000, value=int(it['Cant']), key=f"edit_cant_{idx}")
@@ -370,7 +364,7 @@ if menu=="🛒 Punto de Venta":
                 st.session_state.contador_factura+=1
                 save_contador(st.session_state.contador_factura)
                 st.session_state.carrito=[]
-                st.success(f"✅ Factura #{num:06d} enviada a Facturacion. La persona que imprime la puede editar.")
+                st.success(f"✅ Factura #{num:06d} enviada a Facturacion.")
                 st.balloons()
                 st.rerun()
             if st.button("Vaciar carrito"):
@@ -383,8 +377,7 @@ if menu=="🛒 Punto de Venta":
             imprimir_factura_html(st.session_state.ultima_factura["texto"],st.session_state.ultima_factura["num"])
 
 elif menu=="👥 Clientes":
-    st.title("👥 Clientes - Base de Datos de Clientes")
-    st.caption("Aqui guardas nombre, RNC, telefono, fecha. Luego en Punto de Venta lo eliges en 1 click.")
+    st.title("👥 Clientes")
     col1,col2=st.columns([1,2])
     with col1:
         st.subheader("➕ Nuevo Cliente")
@@ -413,7 +406,7 @@ elif menu=="👥 Clientes":
         if buscar_cli and not df_cli.empty:
             df_cli = df_cli[df_cli["Nombre"].str.contains(buscar_cli, case=False, na=False) | df_cli["RNC"].str.contains(buscar_cli, case=False, na=False)]
         if df_cli.empty:
-            st.info("No hay clientes aun. Crea el primero a la izquierda.")
+            st.info("No hay clientes aun.")
         else:
             st.write(f"**{len(df_cli)} clientes registrados**")
             st.dataframe(df_cli, use_container_width=True, hide_index=True)
@@ -429,10 +422,9 @@ elif menu=="👥 Clientes":
 
 elif menu=="🧾 Facturas":
     st.title("🧾 Facturas - Revisar, Editar y Imprimir")
-    st.caption("Aqui llega todo lo que se vende en Punto de Venta. La persona que imprime puede corregir antes de imprimir. Nada es automatico.")
     df_fact = cargar_facturas()
     if df_fact.empty:
-        st.info("No hay facturas aun. Vende algo en Punto de Venta y aqui aparecera como Pendiente.")
+        st.info("No hay facturas aun.")
     else:
         filtro = st.selectbox("Ver:", ["Todas","Pendiente - Por Revisar","Impresa / Cobrada"])
         if filtro != "Todas":
@@ -462,13 +454,13 @@ elif menu=="🧾 Facturas":
                                 items_editados.append(it_copy)
                         with c_e3:
                             st.write(f"RD$ {it['Total']:,}")
-                    st.write("**Agregar producto extra que el cliente pidio de mas:**")
+                    st.write("**Agregar producto extra:**")
                     df_inv2 = st.session_state.inventario
                     prod_extra = st.selectbox(f"Producto extra #{fac['id']}", ["Ninguno"] + df_inv2["Producto"].tolist(), key=f"extra_prod_{fac['id']}")
                     cant_extra = st.number_input(f"Cant extra #{fac['id']}", min_value=1, value=1, key=f"extra_cant_{fac['id']}")
                     col_g, col_i = st.columns(2)
                     with col_g:
-                        if st.button(f"💾 Guardar Cambios en Factura #{int(fac['Numero']):06d}", key=f"save_fac_{fac['id']}", use_container_width=True):
+                        if st.button(f"💾 Guardar Cambios #{int(fac['Numero']):06d}", key=f"save_fac_{fac['id']}", use_container_width=True):
                             if prod_extra != "Ninguno":
                                 row_extra = df_inv2[df_inv2["Producto"]==prod_extra].iloc[0]
                                 items_editados.append({"Producto":prod_extra,"Icono":row_extra["Icono"],"Cant":cant_extra,"Precio":row_extra["Precio"],"Total":cant_extra*row_extra["Precio"],"Codigo":row_extra["Codigo"]})
@@ -519,7 +511,6 @@ elif menu=="🧾 Facturas":
 
 elif menu=="📦 Catalogo":
     st.title("📦 Catalogo - Solo para ver")
-    st.caption("Este catalogo es solo lectura. Para cambiar precios o stock, ve a Inventario Jefe con tu clave.")
     st.dataframe(st.session_state.inventario[["Codigo","Producto","Precio","Stock","Cat","Icono"]],use_container_width=True,hide_index=True)
 
 elif menu=="🏷️ Codigos de Barra":
@@ -529,6 +520,7 @@ elif menu=="🏷️ Codigos de Barra":
 
 elif menu=="🧮 Calculadora Materiales":
     st.title("🧮 Calculadora - 8 Opciones")
+    st.caption("Ahora al agregar al carrito, se agregan los materiales uno por uno, no como un solo paquete. Asi la factura sale detallada.")
     obra=st.selectbox("Que va a construir?", ["Pared de Blocks", "Casita 3x3 Completa", "Zapata Aislada", "Columna 3m", "Viga 4m", "Piso / Losa 10m2", "Techo Zinc 20m2", "Empanete 20m2"])
     if obra=="Pared de Blocks":
         c1,c2,c3=st.columns(3)
@@ -536,20 +528,36 @@ elif menu=="🧮 Calculadora Materiales":
         alto=c2.number_input("Alto (m)",1.0,10.0,2.5)
         tipo=c3.selectbox("Tipo Block", ["Block 6'' - RD$42","Block 4'' - RD$35","Block 8'' - RD$48"])
         precio_block=42 if "6''" in tipo else (35 if "4''" in tipo else 48)
+        codigo_block="BLK06" if "6''" in tipo else ("BLK04" if "4''" in tipo else "BLK08")
+        icono_block="🧱"
         if st.button("Calcular Pared",type="primary"):
             m2=largo*alto
             blocks=int(m2*12.5)+5
             cemento=int(m2*1.15)+1
             arena=round(m2*0.08,2)
             varilla=int(m2*1.2)
+            # Para arena usamos Cant en m3, precio por m3
             total=blocks*precio_block + cemento*550 + int(arena*2500) + varilla*420
             df=pd.DataFrame([[f"Block {tipo}",blocks,f"RD$ {precio_block}",f"RD$ {blocks*precio_block:,}"],["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Varilla 3/8",varilla,"RD$ 420",f"RD$ {varilla*420:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Pared {m2}m2 {blocks} Blocks","Icono":"🧱","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            # AQUI ESTA EL ARREGLO: lista de productos separados
+            st.session_state.calc_items=[
+                {"Producto":f"Block {tipo.split(' -')[0]}","Icono":"🧱","Cant":blocks,"Precio":precio_block,"Total":blocks*precio_block,"Codigo":codigo_block},
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Varilla 3/8 x 20","Icono":"🔩","Cant":varilla,"Precio":420,"Total":varilla*420,"Codigo":"VAR001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Pared {m2} m2"}
     elif obra=="Casita 3x3 Completa":
         if st.button("Calcular Casita Completa",type="primary",use_container_width=True):
             df=pd.DataFrame([["Block 6''",112,"RD$ 42","RD$ 4,704"],["Cemento",15,"RD$ 550","RD$ 8,250"],["Varilla 3/8",20,"RD$ 420","RD$ 8,400"],["Arena",2,"RD$ 2,500","RD$ 5,000"],["Grava",1.5,"RD$ 2,800","RD$ 4,200"],["Zinc 10ft",6,"RD$ 750","RD$ 4,500"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":"Casita 3x3 Completa","Icono":"🏠","Cant":1,"Precio":35839,"Total":35839,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Block 6''","Icono":"🧱","Cant":112,"Precio":42,"Total":4704,"Codigo":"BLK06"},
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":15,"Precio":550,"Total":8250,"Codigo":"CEM001"},
+                {"Producto":"Varilla 3/8 x 20","Icono":"🔩","Cant":20,"Precio":420,"Total":8400,"Codigo":"VAR001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":2,"Precio":2500,"Total":5000,"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":1.5,"Precio":2800,"Total":4200,"Codigo":"GRAV01"},
+                {"Producto":"Zinc Acanalado 10ft","Icono":"🏠","Cant":6,"Precio":750,"Total":4500,"Codigo":"ZIN001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":35839,"titulo":"Casita 3x3 Completa"}
     elif obra=="Zapata Aislada":
         c1,c2,c3=st.columns(3)
@@ -564,7 +572,12 @@ elif menu=="🧮 Calculadora Materiales":
             varilla=int(cant*6)
             total=cemento*550 + int(arena*2500) + int(grava*2800) + varilla*680
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Grava",grava,"RD$ 2,800",f"RD$ {int(grava*2800):,}"],["Varilla 1/2",varilla,"RD$ 680",f"RD$ {varilla*680:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"{cant} Zapatas {lado}x{lado}m","Icono":"🏗️","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":grava,"Precio":2800,"Total":int(grava*2800),"Codigo":"GRAV01"},
+                {"Producto":"Varilla 1/2 x 20","Icono":"🔩","Cant":varilla,"Precio":680,"Total":varilla*680,"Codigo":"VAR002"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"{cant} Zapatas {lado}m"}
     elif obra=="Columna 3m":
         cant=st.number_input("Cuantas columnas",1,20,4)
@@ -576,7 +589,13 @@ elif menu=="🧮 Calculadora Materiales":
             alambre=int(cant*2)
             total=cemento*550 + int(arena*2500) + int(grava*2800) + varilla*680 + alambre*85
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Grava",grava,"RD$ 2,800",f"RD$ {int(grava*2800):,}"],["Varilla 1/2",varilla,"RD$ 680",f"RD$ {varilla*680:,}"],["Alambre lb",alambre,"RD$ 85",f"RD$ {alambre*85:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"{cant} Columnas 3m","Icono":"🏛️","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":grava,"Precio":2800,"Total":int(grava*2800),"Codigo":"GRAV01"},
+                {"Producto":"Varilla 1/2 x 20","Icono":"🔩","Cant":varilla,"Precio":680,"Total":varilla*680,"Codigo":"VAR002"},
+                {"Producto":"Alambre Dulce lb","Icono":"🪢","Cant":alambre,"Precio":85,"Total":alambre*85,"Codigo":"ALAM01"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"{cant} Columnas"}
     elif obra=="Viga 4m":
         cant=st.number_input("Cuantas vigas 4m",1,20,3)
@@ -585,7 +604,11 @@ elif menu=="🧮 Calculadora Materiales":
             varilla=int(cant*5)
             total=cemento*550 + varilla*680 + cant*2*85
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Varilla 1/2",varilla,"RD$ 680",f"RD$ {varilla*680:,}"],["Alambre",cant*2,"RD$ 85",f"RD$ {cant*2*85:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"{cant} Vigas 4m","Icono":"🏗️","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Varilla 1/2 x 20","Icono":"🔩","Cant":varilla,"Precio":680,"Total":varilla*680,"Codigo":"VAR002"},
+                {"Producto":"Alambre Dulce lb","Icono":"🪢","Cant":cant*2,"Precio":85,"Total":cant*2*85,"Codigo":"ALAM01"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"{cant} Vigas 4m"}
     elif obra=="Piso / Losa 10m2":
         m2=st.number_input("M2 de piso/losa",1.0,200.0,10.0)
@@ -595,7 +618,11 @@ elif menu=="🧮 Calculadora Materiales":
             grava=round(m2*0.10,2)
             total=cemento*550 + int(arena*2500) + int(grava*2800)
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Grava",grava,"RD$ 2,800",f"RD$ {int(grava*2800):,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Piso {m2}m2","Icono":"⬜","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":grava,"Precio":2800,"Total":int(grava*2800),"Codigo":"GRAV01"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Piso {m2} m2"}
     elif obra=="Techo Zinc 20m2":
         m2=st.number_input("M2 de techo",1.0,200.0,20.0)
@@ -605,7 +632,11 @@ elif menu=="🧮 Calculadora Materiales":
             varilla=int(m2/5)+1
             total=zinc*750 + clavo*120 + varilla*420
             df=pd.DataFrame([["Zinc 10ft",zinc,"RD$ 750",f"RD$ {zinc*750:,}"],["Clavo lb",clavo,"RD$ 120",f"RD$ {clavo*120:,}"],["Varilla 3/8",varilla,"RD$ 420",f"RD$ {varilla*420:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Techo Zinc {m2}m2","Icono":"🏠","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Zinc Acanalado 10ft","Icono":"🏠","Cant":zinc,"Precio":750,"Total":zinc*750,"Codigo":"ZIN001"},
+                {"Producto":"Clavo 2 1/2 lb","Icono":"🔨","Cant":clavo,"Precio":120,"Total":clavo*120,"Codigo":"CLAV01"},
+                {"Producto":"Varilla 3/8 x 20","Icono":"🔩","Cant":varilla,"Precio":420,"Total":varilla*420,"Codigo":"VAR001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Techo {m2} m2"}
     elif obra=="Empanete 20m2":
         m2=st.number_input("M2 de empanete",1.0,500.0,20.0)
@@ -614,15 +645,20 @@ elif menu=="🧮 Calculadora Materiales":
             arena=round(m2*0.04,2)
             total=cemento*550 + int(arena*2500)
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Empanete {m2}m2","Icono":"🎨","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Empanete {m2} m2"}
     if st.session_state.calc_detalle:
         st.divider()
         st.subheader(f"📋 Materiales: {st.session_state.calc_detalle['titulo']}")
         st.dataframe(st.session_state.calc_detalle["df"],use_container_width=True,hide_index=True)
         st.markdown(f"### 💰 TOTAL: RD$ {st.session_state.calc_detalle['total']:,}")
-        if st.button("AGREGAR AL CARRITO",type="primary",use_container_width=True):
-            agregar(st.session_state.calc_temp)
+        if st.button("AGREGAR TODOS LOS MATERIALES AL CARRITO",type="primary",use_container_width=True):
+            for item in st.session_state.calc_items:
+                agregar(item)
+            st.success(f"Se agregaron {len(st.session_state.calc_items)} productos al carrito. Ve a Punto de Venta y veras cada uno separado.")
             st.rerun()
 
 elif menu=="📓 Fiado":
@@ -776,7 +812,6 @@ elif menu=="📊 Cierre":
 
 elif menu=="🔐 Inventario Jefe":
     st.title("🔐 Inventario Jefe - Solo el Jefe")
-    st.caption("Esta seccion es privada. El empleado no puede entrar. Aqui si puedes cambiar precio, stock y agregar productos.")
     if 'jefe_ok' not in st.session_state:
         st.session_state.jefe_ok = False
     if not st.session_state.jefe_ok:
@@ -787,7 +822,7 @@ elif menu=="🔐 Inventario Jefe":
                 st.rerun()
             else:
                 st.error("Clave incorrecta. Pregunta al jefe.")
-        st.info("Clave por defecto: 6060 - Cambiala en el codigo donde dice CLAVE_JEFE = '6060'")
+        st.info("Clave por defecto: 6060")
         st.stop()
     st.success("✅ Acceso Jefe Autorizado")
     if st.button("🔒 Cerrar sesion Jefe"):
@@ -823,7 +858,6 @@ elif menu=="🔐 Inventario Jefe":
 
 elif menu=="🔍 Ver Base de Datos SQL":
     st.title("🔍 Base de Datos SQL - La Fe 606")
-    st.caption("Vista minimalista | Archivo: lafe_606.db")
     conn = get_conn()
     try:
         total_prod = conn.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
