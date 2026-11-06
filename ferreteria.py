@@ -8,54 +8,166 @@ from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
 
-# ===== FONDO BONITO + FORZAR MODO CLARO =====
+# ===== FONDO NEGRO + CUADROS AZULES - QUE SE VEA BIEN =====
 st.markdown("""
 <style>
-:root { color-scheme: light !important; }
-html, body { background: #EAF6FF !important; color-scheme: light !important; }
-.stApp { background: #EAF6FF !important; }
+:root { color-scheme: dark !important; }
+html, body { background: #000000 !important; }
+/* Fondo general NEGRO */
+.stApp {
+    background: #000000 !important;
+}
+/* Cuadros principales AZULES */
 .main .block-container {
-    background: #FFFFFF;
+    background: #143A5A !important;
     border-radius: 18px;
     padding: 25px 30px;
     margin-top: 10px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #2A5A8A !important;
 }
-.stApp, .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 { color: #1A2A3A !important; }
-h1, h2, h3 { color: #0B2C4A !important; font-weight: 900 !important; }
-section[data-testid="stSidebar"] { background: #0B2C4A !important; }
+/* TODA LA LETRA BLANCA */
+.stApp, .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 {
+    color: white !important;
+}
+h1, h2, h3 {
+    color: white !important;
+    font-weight: 900 !important;
+}
+p, span, label {
+    color: white !important;
+}
+/* Sidebar NEGRO */
+section[data-testid="stSidebar"] {
+    background: #000000 !important;
+    border-right: 2px solid #143A5A !important;
+}
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span { color: white !important; }
+section[data-testid="stSidebar"] span {
+    color: white !important;
+}
 section[data-testid="stSidebar"] div[role="radiogroup"] label {
     background: #143A5A !important;
     border-radius: 10px !important;
     padding: 10px 12px !important;
     margin-bottom: 8px !important;
+    border: 1px solid #2A5A8A !important;
 }
 section[data-testid="stSidebar"] div[role="radiogroup"] label p,
-section[data-testid="stSidebar"] div[role="radiogroup"] label span { color: white !important; font-weight: 700 !important; font-size: 15px !important; }
-section[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: #FF6B00 !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] label span {
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: #FF6B00 !important;
+}
+/* Inputs - FONDO BLANCO, LETRA NEGRA para que se vea lo que escribes */
 .stTextInput input, .stNumberInput input, .stSelectbox input, textarea {
     color: #000000 !important;
     background: white !important;
-    border: 2px solid #A5D8FF !important;
+    border: 2px solid #FF6B00 !important;
     border-radius: 10px !important;
-    color-scheme: light !important;
 }
-.stTextInput label, .stNumberInput label, .stSelectbox label { color: #0B2C4A !important; font-weight: 700 !important; }
-div[data-baseweb="select"] span { color: #000000 !important; }
-input::placeholder { color: #7A8A9A !important; }
-.stButton > button[kind="primary"] { background: #FF6B00 !important; color: white !important; border: none !important; border-radius: 12px !important; font-weight: 800 !important; }
-.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span { color: white !important; }
-.stButton > button { background: white !important; color: #0B2C4A !important; border: 2px solid #FF6B00 !important; border-radius: 12px !important; font-weight: 700 !important; }
-.stButton > button p, .stButton > button span { color: #0B2C4A !important; }
-div[data-testid="stMetric"] { background: #F0F9FF !important; padding: 15px; border-radius: 12px; border-left: 5px solid #FF6B00; }
-div[data-testid="stMetric"] label, div[data-testid="stMetric"] div { color: #0B2C4A !important; }
-div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span { color: #1A2A3A !important; }
-input[type="date"] { color-scheme: light !important; background: white !important; color: black !important; }
+.stTextInput label, .stNumberInput label, .stSelectbox label {
+    color: white !important;
+    font-weight: 700 !important;
+}
+div[data-baseweb="select"] > div {
+    background: white !important;
+    color: black !important;
+}
+div[data-baseweb="select"] span {
+    color: #000000 !important;
+}
+input::placeholder {
+    color: #7A8A9A !important;
+}
+/* Quitar el azul de seleccion */
+::selection {
+    background: #FF6B00 !important;
+    color: white !important;
+}
+/* Botones */
+.stButton > button[kind="primary"] {
+    background: #FF6B00 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 800 !important;
+}
+.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span {
+    color: white !important;
+}
+.stButton > button {
+    background: #1E4A7A !important;
+    color: white !important;
+    border: 2px solid #FF6B00 !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+}
+.stButton > button p, .stButton > button span {
+    color: white !important;
+}
+/* Metricas - AZUL MAS CLARO */
+div[data-testid="stMetric"] {
+    background: #1E4A7A !important;
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 5px solid #FF6B00;
+    border: 1px solid #2A5A8A !important;
+}
+div[data-testid="stMetric"] label, div[data-testid="stMetric"] div {
+    color: white !important;
+}
+/* Dataframe - FONDO BLANCO para que se lea */
+div[data-testid="stDataFrame"] {
+    background: white !important;
+    border-radius: 10px !important;
+}
+div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span {
+    color: #000000 !important;
+}
+/* ===== ARREGLAR LOS CUADROS DE ALERTA QUE SALIAN AZUL FEO ===== */
+/* st.info - Sistema dice */
+div[data-testid="stAlert"] {
+    background: #1E4A7A !important;
+    color: white !important;
+    border: 1px solid #2A5A8A !important;
+    border-radius: 12px !important;
+}
+div[data-testid="stAlert"] p, div[data-testid="stAlert"] span, div[data-testid="stAlert"] div {
+    color: white !important;
+}
+/* st.success - CUADRE PERFECTO */
+div[data-testid="stAlert"][data-baseweb="notification"] {
+    background: #1E4A7A !important;
+}
+/* Contenedores con borde - AZULES */
+div[data-testid="stContainer"] {
+    background: #1E4A7A !important;
+    border: 1px solid #2A5A8A !important;
+    border-radius: 12px !important;
+}
+/* Expander */
+.stExpander summary p, .stExpander summary span {
+    color: white !important;
+}
+.stExpander {
+    background: #1E4A7A !important;
+    border: 1px solid #2A5A8A !important;
+}
+/* Botones + - de los number_input */
+button[data-testid="stNumberInputStepUp"], button[data-testid="stNumberInputStepDown"] {
+    background: #000000 !important;
+    color: white !important;
+}
+/* Data Editor */
+div[data-testid="stDataEditor"] div {
+    color: black !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -529,17 +641,14 @@ elif menu=="🧮 Calculadora Materiales":
         tipo=c3.selectbox("Tipo Block", ["Block 6'' - RD$42","Block 4'' - RD$35","Block 8'' - RD$48"])
         precio_block=42 if "6''" in tipo else (35 if "4''" in tipo else 48)
         codigo_block="BLK06" if "6''" in tipo else ("BLK04" if "4''" in tipo else "BLK08")
-        icono_block="🧱"
         if st.button("Calcular Pared",type="primary"):
             m2=largo*alto
             blocks=int(m2*12.5)+5
             cemento=int(m2*1.15)+1
             arena=round(m2*0.08,2)
             varilla=int(m2*1.2)
-            # Para arena usamos Cant en m3, precio por m3
             total=blocks*precio_block + cemento*550 + int(arena*2500) + varilla*420
             df=pd.DataFrame([[f"Block {tipo}",blocks,f"RD$ {precio_block}",f"RD$ {blocks*precio_block:,}"],["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Varilla 3/8",varilla,"RD$ 420",f"RD$ {varilla*420:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            # AQUI ESTA EL ARREGLO: lista de productos separados
             st.session_state.calc_items=[
                 {"Producto":f"Block {tipo.split(' -')[0]}","Icono":"🧱","Cant":blocks,"Precio":precio_block,"Total":blocks*precio_block,"Codigo":codigo_block},
                 {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
@@ -658,7 +767,7 @@ elif menu=="🧮 Calculadora Materiales":
         if st.button("AGREGAR TODOS LOS MATERIALES AL CARRITO",type="primary",use_container_width=True):
             for item in st.session_state.calc_items:
                 agregar(item)
-            st.success(f"Se agregaron {len(st.session_state.calc_items)} productos al carrito. Ve a Punto de Venta y veras cada uno separado.")
+            st.success(f"Se agregaron {len(st.session_state.calc_items)} productos al carrito.")
             st.rerun()
 
 elif menu=="📓 Fiado":
