@@ -7,6 +7,114 @@ import sqlite3, hashlib, time, json
 from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
+
+# ===== FONDO AZUL CELESTE + NARANJA - BONITO =====
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(180deg, #7DD3FC 0%, #BAE6FD 30%, #E0F2FE 70%, #FFFFFF 100%);
+    background-attachment: fixed;
+}
+.main .block-container {
+    background: rgba(255,255,255,0.92);
+    border-radius: 20px;
+    padding: 25px 30px;
+    margin-top: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+}
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #FF6B00 0%, #FF8C42 40%, #0EA5E9 100%) !important;
+}
+section[data-testid="stSidebar"] * {
+    color: white !important;
+}
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+    color: white !important;
+    font-weight: 900 !important;
+}
+h1, h2, h3 {
+    color: #0C4A6E !important;
+    font-weight: 900 !important;
+}
+.stButton > button[kind="primary"], div[data-testid="stButton"] > button[type="primary"] {
+    background: linear-gradient(90deg, #FF6B00, #FF8C42) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 800 !important;
+    font-size: 16px !important;
+    padding: 12px 20px !important;
+    box-shadow: 0 5px 15px rgba(255,107,0,0.4) !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background: #EA580C !important;
+    transform: scale(1.02);
+}
+.stButton > button {
+    border-radius: 12px !important;
+    border: 2px solid #FF6B00 !important;
+    color: #0C4A6E !important;
+    font-weight: 700 !important;
+    background: white !important;
+}
+div[data-testid="stContainer"] {
+    background: white;
+    border-radius: 15px;
+    border: 1px solid #BAE6FD;
+}
+div[data-testid="stMetric"] {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    border-left: 5px solid #FF6B00;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+div[data-testid="stMetric"] label {
+    color: #0EA5E9 !important;
+    font-weight: 700 !important;
+}
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    color: #0C4A6E !important;
+    font-weight: 900 !important;
+}
+.stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+    border-radius: 10px !important;
+    border: 2px solid #7DD3FC !important;
+    background: white !important;
+}
+.stTextInput input:focus {
+    border-color: #FF6B00 !important;
+}
+div[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #BAE6FD;
+}
+div[data-testid="stSuccess"] {
+    background: #DCFCE7 !important;
+    border-radius: 10px;
+}
+div[data-testid="stInfo"] {
+    background: #E0F2FE !important;
+    border-radius: 10px;
+}
+div[data-testid="stWarning"] {
+    background: #FEF3C7 !important;
+    border-radius: 10px;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background: rgba(255,255,255,0.18) !important;
+    border-radius: 10px !important;
+    padding: 8px 12px !important;
+    margin-bottom: 6px !important;
+    font-weight: 700 !important;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: rgba(255,255,255,0.35) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 DB_FILE = "lafe_606.db"
 CLAVE_JEFE = "6060"
 
@@ -29,7 +137,6 @@ def init_db():
     INSERT OR IGNORE INTO ventas_config VALUES ('contador_ncf','1');
     """)
     conn.commit()
-    # Solo cargar productos iniciales si esta vacio, para que no se borre tu inventario cada vez que abres
     count = cur.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
     if count == 0:
         productos = [
@@ -223,10 +330,8 @@ with st.sidebar:
         save_contador(st.session_state.contador_factura)
         st.success("Guardado!")
 
-# ================= PUNTO DE VENTA CON CARRITO EDITABLE =================
 if menu=="🛒 Punto de Venta":
     st.title("🛒 Punto de Venta")
-    # Selector de cliente intuitivo
     df_cli = cargar_clientes()
     st.subheader("1️⃣ Elige Cliente para esta venta")
     c_cli1, c_cli2, c_cli3 = st.columns([2,1,1])
@@ -245,9 +350,6 @@ if menu=="🛒 Punto de Venta":
         st.session_state.rnc_seleccionado = rnc_manual
     with c_cli3:
         st.caption("Si no existe, ve a 👥 Clientes y crealo")
-        if st.button("➕ Nuevo Cliente Rapido"):
-            st.switch_page("app.py")
-
     st.divider()
     c1,c2=st.columns([2,1])
     with c1:
@@ -282,7 +384,6 @@ if menu=="🛒 Punto de Venta":
         st.subheader("3️⃣ Carrito - Puedes Editar Aqui")
         st.caption("Cambia cantidad o quita algo antes de facturar. Nada se factura solo.")
         if st.session_state.carrito:
-            # Carrito editable
             for idx, it in enumerate(list(st.session_state.carrito)):
                 with st.container(border=True):
                     st.write(f"{it.get('Icono','')} **{it['Producto'][:28]}**")
@@ -307,7 +408,6 @@ if menu=="🛒 Punto de Venta":
             tipo_comp = st.selectbox("Tipo Comprobante DGII", ["B02 - Consumo (sin RNC)", "B01 - Credito Fiscal (con RNC)", "B04 - Regimen Especial"])
             if st.button("📝 ENVIAR A FACTURACION (No cobra aun)",type="primary",use_container_width=True):
                 num=st.session_state.contador_factura
-                # Guardar como BORRADOR, no cobra, no descuenta stock todavia
                 conn=get_conn()
                 conn.execute("INSERT INTO facturas (Numero, NCF, Cliente, RNC, Telefono, Fecha, Items, Subtotal, Itbis, Total, Estado, TipoComprobante) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (num, "", st.session_state.cliente_seleccionado, st.session_state.rnc_seleccionado, "", datetime.now().strftime("%d/%m/%Y %I:%M %p"), json.dumps(st.session_state.carrito), sub, itbis, total, "Pendiente - Por Revisar", tipo_comp))
@@ -363,7 +463,6 @@ elif menu=="👥 Clientes":
         else:
             st.write(f"**{len(df_cli)} clientes registrados**")
             st.dataframe(df_cli, use_container_width=True, hide_index=True)
-            # Borrar cliente
             for _, r in df_cli.iterrows():
                 with st.container(border=True):
                     st.write(f"**{r['Nombre']}** - RNC: {r['RNC']} | 📱 {r['Telefono']} | 📅 {r['FechaRegistro']}")
@@ -381,7 +480,6 @@ elif menu=="🧾 Facturas":
     if df_fact.empty:
         st.info("No hay facturas aun. Vende algo en Punto de Venta y aqui aparecera como Pendiente.")
     else:
-        # Filtros
         filtro = st.selectbox("Ver:", ["Todas","Pendiente - Por Revisar","Impresa / Cobrada"])
         if filtro != "Todas":
             df_fact = df_fact[df_fact["Estado"]==filtro]
@@ -391,33 +489,25 @@ elif menu=="🧾 Facturas":
             with st.container(border=True):
                 st.markdown(f"{estado_color} **Factura #{int(fac['Numero']):06d}** - {fac['Cliente']} | RNC: {fac['RNC']} | {fac['Fecha']} | **Total: RD$ {fac['Total']:,.2f}** | {fac['Estado']} | NCF: {fac['NCF'] or 'Sin asignar'}")
                 st.caption(f"Comprobante: {fac['TipoComprobante']}")
-                # Mostrar items actuales
                 for it in items:
                     st.write(f"- {it['Cant']} x {it['Producto']} = RD$ {it['Total']:,}")
-                # Si esta pendiente, permitir editar
                 if "Pendiente" in fac["Estado"]:
                     st.divider()
                     st.subheader("✏️ Editar esta factura antes de imprimir")
-                    # Editar items: permitir quitar o cambiar cantidad
                     items_editados = []
-                    cambios = False
                     for idx2, it in enumerate(items):
                         c_e1, c_e2, c_e3 = st.columns([3,1,1])
                         with c_e1:
                             st.write(f"{it['Producto']}")
                         with c_e2:
                             nueva = st.number_input(f"Cant #{fac['id']}-{idx2}", min_value=0, value=int(it['Cant']), key=f"fac_edit_{fac['id']}_{idx2}")
-                            if nueva != it['Cant']:
-                                cambios = True
                             if nueva > 0:
                                 it_copy = it.copy()
                                 it_copy['Cant'] = nueva
                                 it_copy['Total'] = nueva * it['Precio']
                                 items_editados.append(it_copy)
-                            # Si es 0, se elimina
                         with c_e3:
                             st.write(f"RD$ {it['Total']:,}")
-                    # Agregar producto extra a la factura
                     st.write("**Agregar producto extra que el cliente pidio de mas:**")
                     df_inv2 = st.session_state.inventario
                     prod_extra = st.selectbox(f"Producto extra #{fac['id']}", ["Ninguno"] + df_inv2["Producto"].tolist(), key=f"extra_prod_{fac['id']}")
@@ -439,7 +529,6 @@ elif menu=="🧾 Facturas":
                             st.rerun()
                     with col_i:
                         if st.button(f"✅ Aprobar, Generar NCF e Imprimir #{int(fac['Numero']):06d}", key=f"print_fac_{fac['id']}", type="primary", use_container_width=True):
-                            # Si hubo cambios, guardarlos primero
                             if prod_extra != "Ninguno":
                                 row_extra = df_inv2[df_inv2["Producto"]==prod_extra].iloc[0]
                                 items_editados.append({"Producto":prod_extra,"Icono":row_extra["Icono"],"Cant":cant_extra,"Precio":row_extra["Precio"],"Total":cant_extra*row_extra["Precio"],"Codigo":row_extra["Codigo"]})
@@ -449,7 +538,6 @@ elif menu=="🧾 Facturas":
                             ncf_nuevo, _ = generar_ncf()
                             texto = generar_texto_factura(fac['Cliente'], fac['RNC'], ncf_nuevo, items_editados, new_sub, new_itbis, new_total, int(fac['Numero']), fac['TipoComprobante'])
                             st.session_state.ultima_factura = {"texto": texto, "num": int(fac['Numero'])}
-                            # Descontar stock y sumar ventas solo AHORA que se aprueba
                             for it in items_editados:
                                 if it.get("Codigo"):
                                     idx = st.session_state.inventario[st.session_state.inventario["Codigo"]==it["Codigo"]].index
@@ -471,7 +559,6 @@ elif menu=="🧾 Facturas":
                         conn.close()
                         st.rerun()
                 else:
-                    # Si ya esta impresa, mostrar boton de re-imprimir
                     texto_re = generar_texto_factura(fac['Cliente'], fac['RNC'], fac['NCF'], items, fac['Subtotal'], fac['Itbis'], fac['Total'], int(fac['Numero']), fac['TipoComprobante'])
                     st.download_button(f"⬇️ Descargar TXT Factura #{int(fac['Numero']):06d}", texto_re, file_name=f"FACTURA_{int(fac['Numero']):06d}.txt", key=f"dl_{fac['id']}")
                     imprimir_factura_html(texto_re, int(fac['Numero']))
@@ -756,7 +843,6 @@ elif menu=="🔐 Inventario Jefe":
     try:
         df_edit=st.data_editor(st.session_state.inventario[["Codigo","Producto","Stock","Precio","Cat","Icono"]],use_container_width=True,num_rows="dynamic")
         if st.button("💾 Guardar Cambios en SQL - Jefe",type="primary",use_container_width=True):
-            # Guardar todo, incluyendo productos nuevos
             st.session_state.inventario = df_edit.copy()
             save_inv(st.session_state.inventario)
             st.success("Guardado por el Jefe!")
