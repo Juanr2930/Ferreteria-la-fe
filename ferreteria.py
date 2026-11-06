@@ -13,20 +13,9 @@ st.markdown("""
 <style>
 :root { color-scheme: light !important; }
 html, body { background: #FFFFFF !important; }
-.stApp {
-    background: #FFFFFF !important;
-    color: #1A2A3A !important;
-}
-/* Por defecto TODO en NEGRO para que se vea en fondo blanco */
-.stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 {
-    color: #1A2A3A !important;
-}
-h1, h2, h3 {
-    color: #0B2C4A !important;
-    font-weight: 900 !important;
-}
-
-/* ===== SOLO DENTRO DE LOS CUADROS AZULES LA LETRA ES BLANCA ===== */
+.stApp { background: #FFFFFF !important; color: #1A2A3A !important; }
+.stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 { color: #1A2A3A !important; }
+h1, h2, h3 { color: #0B2C4A !important; font-weight: 900 !important; }
 .main .block-container {
     background: #143A5A !important;
     border-radius: 18px;
@@ -42,23 +31,15 @@ h1, h2, h3 {
 .main .block-container h1,
 .main .block-container h2,
 .main .block-container h3,
-.main .block-container h4 {
-    color: white !important;
-}
-
-/* Sidebar AZUL OSCURO - letra blanca */
-section[data-testid="stSidebar"] {
-    background: #0B2C4A !important;
-}
+.main .block-container h4 { color: white !important; }
+section[data-testid="stSidebar"] { background: #0B2C4A !important; }
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] span,
 section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] div {
-    color: white !important;
-}
+section[data-testid="stSidebar"] div { color: white !important; }
 section[data-testid="stSidebar"] div[role="radiogroup"] label {
     background: #143A5A !important;
     border-radius: 10px !important;
@@ -67,113 +48,35 @@ section[data-testid="stSidebar"] div[role="radiogroup"] label {
     border: 1px solid #2A5A8A !important;
 }
 section[data-testid="stSidebar"] div[role="radiogroup"] label p,
-section[data-testid="stSidebar"] div[role="radiogroup"] label span {
-    color: white !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
-}
-section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-    background: #FF6B00 !important;
-}
-/* Inputs - SIEMPRE fondo blanco letra negra */
+section[data-testid="stSidebar"] div[role="radiogroup"] label span { color: white !important; font-weight: 700 !important; font-size: 15px !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: #FF6B00 !important; }
 .stTextInput input, .stNumberInput input, .stSelectbox input, textarea {
     color: #000000 !important;
     background: white !important;
     border: 2px solid #FF6B00 !important;
     border-radius: 10px !important;
 }
-.stTextInput label, .stNumberInput label, .stSelectbox label {
-    color: white !important;
-    font-weight: 700 !important;
-}
-div[data-baseweb="select"] > div {
-    background: white !important;
-    color: black !important;
-}
-div[data-baseweb="select"] span {
-    color: #000000 !important;
-}
-input::placeholder {
-    color: #7A8A9A !important;
-}
-::selection {
-    background: #FF6B00 !important;
-    color: white !important;
-}
-/* Botones */
-.stButton > button[kind="primary"] {
-    background: #FF6B00 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    font-weight: 800 !important;
-}
-.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span {
-    color: white !important;
-}
-.stButton > button {
-    background: #1E4A7A !important;
-    color: white !important;
-    border: 2px solid #FF6B00 !important;
-    border-radius: 12px !important;
-    font-weight: 700 !important;
-}
-.stButton > button p, .stButton > button span {
-    color: white !important;
-}
-/* Metricas - AZUL MAS CLARO, letra blanca */
-div[data-testid="stMetric"] {
-    background: #1E4A7A !important;
-    padding: 15px;
-    border-radius: 12px;
-    border-left: 5px solid #FF6B00;
-    border: 1px solid #2A5A8A !important;
-}
-div[data-testid="stMetric"] label, div[data-testid="stMetric"] div,
-div[data-testid="stMetric"] p, div[data-testid="stMetric"] span {
-    color: white !important;
-}
-/* Dataframe - FONDO BLANCO letra negra */
-div[data-testid="stDataFrame"] {
-    background: white !important;
-    border-radius: 10px !important;
-}
-div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span {
-    color: #000000 !important;
-}
-/* Alertas - AZUL BONITO letra blanca */
-div[data-testid="stAlert"] {
-    background: #1E4A7A !important;
-    color: white !important;
-    border: 1px solid #2A5A8A !important;
-    border-radius: 12px !important;
-}
-div[data-testid="stAlert"] p, div[data-testid="stAlert"] span, div[data-testid="stAlert"] div {
-    color: white !important;
-}
-/* Contenedores - AZULES letra blanca */
-div[data-testid="stContainer"] {
-    background: #1E4A7A !important;
-    border: 1px solid #2A5A8A !important;
-    border-radius: 12px !important;
-}
-div[data-testid="stContainer"] p, div[data-testid="stContainer"] span, div[data-testid="stContainer"] label, div[data-testid="stContainer"] div {
-    color: white !important;
-}
-.stExpander summary p, .stExpander summary span {
-    color: white !important;
-}
-.stExpander {
-    background: #1E4A7A !important;
-    border: 1px solid #2A5A8A !important;
-}
-button[data-testid="stNumberInputStepUp"], button[data-testid="stNumberInputStepDown"] {
-    background: #0B2C4A !important;
-    color: white !important;
-}
-div[data-testid="stDataEditor"] div {
-    color: black !important;
-}
+.stTextInput label, .stNumberInput label, .stSelectbox label { color: white !important; font-weight: 700 !important; }
+div[data-baseweb="select"] > div { background: white !important; color: black !important; }
+div[data-baseweb="select"] span { color: #000000 !important; }
+input::placeholder { color: #7A8A9A !important; }
+::selection { background: #FF6B00 !important; color: white !important; }
+.stButton > button[kind="primary"] { background: #FF6B00 !important; color: white !important; border: none !important; border-radius: 12px !important; font-weight: 800 !important; }
+.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span { color: white !important; }
+.stButton > button { background: #1E4A7A !important; color: white !important; border: 2px solid #FF6B00 !important; border-radius: 12px !important; font-weight: 700 !important; }
+.stButton > button p, .stButton > button span { color: white !important; }
+div[data-testid="stMetric"] { background: #1E4A7A !important; padding: 15px; border-radius: 12px; border-left: 5px solid #FF6B00; border: 1px solid #2A5A8A !important; }
+div[data-testid="stMetric"] label, div[data-testid="stMetric"] div, div[data-testid="stMetric"] p, div[data-testid="stMetric"] span { color: white !important; }
+div[data-testid="stDataFrame"] { background: white !important; border-radius: 10px !important; }
+div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span { color: #000000 !important; }
+div[data-testid="stAlert"] { background: #1E4A7A !important; color: white !important; border: 1px solid #2A5A8A !important; border-radius: 12px !important; }
+div[data-testid="stAlert"] p, div[data-testid="stAlert"] span, div[data-testid="stAlert"] div { color: white !important; }
+div[data-testid="stContainer"] { background: #1E4A7A !important; border: 1px solid #2A5A8A !important; border-radius: 12px !important; }
+div[data-testid="stContainer"] p, div[data-testid="stContainer"] span, div[data-testid="stContainer"] label, div[data-testid="stContainer"] div { color: white !important; }
+.stExpander summary p, .stExpander summary span { color: white !important; }
+.stExpander { background: #1E4A7A !important; border: 1px solid #2A5A8A !important; }
+button[data-testid="stNumberInputStepUp"], button[data-testid="stNumberInputStepDown"] { background: #0B2C4A !important; color: white !important; }
+div[data-testid="stDataEditor"] div { color: black !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -239,6 +142,22 @@ def generar_ncf():
     conn.commit()
     conn.close()
     return f"B02{str(n).zfill(8)}", n
+
+# ===== FUNCION NUEVA: CERRAR DIA BIEN, SIN REINICIAR =====
+def cerrar_dia_completo():
+    conn = get_conn()
+    # 1. Borra todas las facturas del dia (las que salian para imprimir)
+    conn.execute("DELETE FROM facturas")
+    # 2. Pone ventas en 0
+    conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy','0')")
+    conn.commit()
+    conn.close()
+    # 3. Limpia todo en memoria para que no haya que reiniciar
+    st.session_state.ventas_hoy = 0
+    st.session_state.carrito = []
+    st.session_state.ultima_factura = None
+    st.session_state.calc_detalle = None
+    st.session_state.calc_items = []
 
 if 'lic_activa' not in st.session_state:
     st.session_state.lic_activa=False
@@ -540,9 +459,18 @@ elif menu=="👥 Clientes":
 
 elif menu=="🧾 Facturas":
     st.title("🧾 Facturas - Revisar, Editar y Imprimir")
+    # Boton nuevo para limpiar sin tener que ir a Cierre
+    if st.button("🧹 LIMPIAR TODAS LAS FACTURAS DEL DIA", use_container_width=True):
+        conn=get_conn()
+        conn.execute("DELETE FROM facturas")
+        conn.commit()
+        conn.close()
+        st.session_state.ultima_factura=None
+        st.success("Facturas limpiadas, ya no aparecen para imprimir")
+        st.rerun()
     df_fact = cargar_facturas()
     if df_fact.empty:
-        st.info("No hay facturas aun.")
+        st.info("No hay facturas aun. Todo limpio.")
     else:
         filtro = st.selectbox("Ver:", ["Todas","Pendiente - Por Revisar","Impresa / Cobrada"])
         if filtro != "Todas":
@@ -902,6 +830,7 @@ elif menu=="📊 Cierre":
             st.session_state.inventario.to_excel(writer, sheet_name='Inventario', index=False)
         st.download_button(label="📦 Solo Inventario Excel", data=output_inv.getvalue(), file_name=f"INVENTARIO_{date.today()}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
     st.divider()
+    st.warning("⚠️ Antes de cerrar: Descarga tu Excel arriba. Al cerrar se borran las facturas del dia.")
     izq,der=st.columns([1.1,1.4])
     with izq:
         st.subheader("Cuadre")
@@ -915,9 +844,12 @@ elif menu=="📊 Cierre":
                 st.warning(f"SOBRA RD$ {dif:,.2f}")
             else:
                 st.error(f"FALTA RD$ {abs(dif):,.2f}")
-        if st.button("Cerrar Dia",type="primary",use_container_width=True):
-            st.session_state.ventas_hoy=0
-            save_ventas(0)
+        # ===== CERRAR DIA ARREGLADO =====
+        if st.button("🔒 Cerrar Dia y Limpiar Facturas",type="primary",use_container_width=True):
+            cerrar_dia_completo()
+            st.success("✅ Dia cerrado. Facturas limpiadas. Ya puedes empezar mañana sin reiniciar.")
+            st.balloons()
+            time.sleep(0.5)
             st.rerun()
     with der:
         st.subheader("Resumen Inventario (Solo lectura)")
