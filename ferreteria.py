@@ -8,7 +8,7 @@ from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
 
-# ===== FONDO BONITO CORREGIDO - SI SE VE LA LETRA =====
+# ===== FONDO BONITO CORREGIDO + CALENDARIO ARREGLADO =====
 st.markdown("""
 <style>
 .stApp {
@@ -106,6 +106,62 @@ div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span {
 }
 .stExpander summary p, .stExpander summary span {
     color: #0B2C4A !important;
+}
+
+/* ===== ARREGLO CALENDARIO / FECHAS ===== */
+.stDateInput input {
+    color: #000000 !important;
+    background: white !important;
+    border: 2px solid #A5D8FF !important;
+}
+.stDateInput label {
+    color: #0B2C4A !important;
+    font-weight: 700 !important;
+}
+.stDateInput svg {
+    fill: #0B2C4A !important;
+    color: #0B2C4A !important;
+    opacity: 1 !important;
+}
+div[data-baseweb="popover"], div[data-baseweb="calendar"], div[data-baseweb="menu"] {
+    background: white !important;
+    color: #000000 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+}
+div[data-baseweb="calendar"] * {
+    color: #000000 !important;
+    background: white !important;
+}
+div[data-baseweb="calendar"] div[role="heading"],
+div[data-baseweb="calendar"] button {
+    color: #0B2C4A !important;
+    background: white !important;
+}
+div[data-baseweb="calendar"] th, div[data-baseweb="calendar"] thead td {
+    color: #0B2C4A !important;
+    font-weight: 800 !important;
+}
+div[data-baseweb="calendar"] td div, div[data-baseweb="calendar"] td span {
+    color: #000000 !important;
+    background: white !important;
+}
+div[data-baseweb="calendar"] td[aria-selected="true"] div,
+div[data-baseweb="calendar"] td[aria-selected="true"] span {
+    background: #FF6B00 !important;
+    color: white !important;
+    border-radius: 50% !important;
+}
+div[data-baseweb="calendar"] td div:hover {
+    background: #EAF6FF !important;
+    color: #000000 !important;
+}
+div[data-baseweb="calendar"] svg {
+    fill: #0B2C4A !important;
+    color: #0B2C4A !important;
+}
+div[data-baseweb="popover"] > div {
+    background: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
