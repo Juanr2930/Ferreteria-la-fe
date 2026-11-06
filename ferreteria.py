@@ -8,24 +8,25 @@ from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
 
-# ===== FONDO NEGRO + CUADROS AZULES - QUE SE VEA BIEN =====
+# ===== FONDO BLANCO + CUADROS AZULES BONITOS =====
 st.markdown("""
 <style>
-:root { color-scheme: dark !important; }
-html, body { background: #000000 !important; }
-/* Fondo general NEGRO */
+:root { color-scheme: light !important; }
+html, body { background: #FFFFFF !important; }
+/* Fondo general BLANCO */
 .stApp {
-    background: #000000 !important;
+    background: #FFFFFF !important;
 }
-/* Cuadros principales AZULES */
+/* Cuadros principales AZULES BONITOS */
 .main .block-container {
     background: #143A5A !important;
     border-radius: 18px;
     padding: 25px 30px;
     margin-top: 10px;
     border: 1px solid #2A5A8A !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10) !important;
 }
-/* TODA LA LETRA BLANCA */
+/* TODA LA LETRA DENTRO DE LOS CUADROS ES BLANCA */
 .stApp, .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 {
     color: white !important;
 }
@@ -36,9 +37,9 @@ h1, h2, h3 {
 p, span, label {
     color: white !important;
 }
-/* Sidebar NEGRO */
+/* Sidebar AZUL OSCURO */
 section[data-testid="stSidebar"] {
-    background: #000000 !important;
+    background: #0B2C4A !important;
     border-right: 2px solid #143A5A !important;
 }
 section[data-testid="stSidebar"] h1,
@@ -85,7 +86,7 @@ div[data-baseweb="select"] span {
 input::placeholder {
     color: #7A8A9A !important;
 }
-/* Quitar el azul de seleccion */
+/* Seleccion naranja, no azul feo */
 ::selection {
     background: #FF6B00 !important;
     color: white !important;
@@ -130,8 +131,7 @@ div[data-testid="stDataFrame"] {
 div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span {
     color: #000000 !important;
 }
-/* ===== ARREGLAR LOS CUADROS DE ALERTA QUE SALIAN AZUL FEO ===== */
-/* st.info - Sistema dice */
+/* Alertas - Sistema dice / CUADRE PERFECTO - AZUL BONITO */
 div[data-testid="stAlert"] {
     background: #1E4A7A !important;
     color: white !important;
@@ -141,17 +141,12 @@ div[data-testid="stAlert"] {
 div[data-testid="stAlert"] p, div[data-testid="stAlert"] span, div[data-testid="stAlert"] div {
     color: white !important;
 }
-/* st.success - CUADRE PERFECTO */
-div[data-testid="stAlert"][data-baseweb="notification"] {
-    background: #1E4A7A !important;
-}
 /* Contenedores con borde - AZULES */
 div[data-testid="stContainer"] {
     background: #1E4A7A !important;
     border: 1px solid #2A5A8A !important;
     border-radius: 12px !important;
 }
-/* Expander */
 .stExpander summary p, .stExpander summary span {
     color: white !important;
 }
@@ -159,12 +154,10 @@ div[data-testid="stContainer"] {
     background: #1E4A7A !important;
     border: 1px solid #2A5A8A !important;
 }
-/* Botones + - de los number_input */
 button[data-testid="stNumberInputStepUp"], button[data-testid="stNumberInputStepDown"] {
-    background: #000000 !important;
+    background: #0B2C4A !important;
     color: white !important;
 }
-/* Data Editor */
 div[data-testid="stDataEditor"] div {
     color: black !important;
 }
