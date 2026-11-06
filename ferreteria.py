@@ -8,109 +8,104 @@ from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
 
-# ===== FONDO AZUL CELESTE + NARANJA - BONITO =====
+# ===== FONDO BONITO CORREGIDO - SI SE VE LA LETRA =====
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(180deg, #7DD3FC 0%, #BAE6FD 30%, #E0F2FE 70%, #FFFFFF 100%);
-    background-attachment: fixed;
+    background: #EAF6FF !important;
 }
 .main .block-container {
-    background: rgba(255,255,255,0.92);
-    border-radius: 20px;
+    background: #FFFFFF;
+    border-radius: 18px;
     padding: 25px 30px;
-    margin-top: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    margin-top: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #FF6B00 0%, #FF8C42 40%, #0EA5E9 100%) !important;
-}
-section[data-testid="stSidebar"] * {
-    color: white !important;
-}
-section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
-    color: white !important;
-    font-weight: 900 !important;
+.stApp, .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 {
+    color: #1A2A3A !important;
 }
 h1, h2, h3 {
-    color: #0C4A6E !important;
+    color: #0B2C4A !important;
     font-weight: 900 !important;
 }
-.stButton > button[kind="primary"], div[data-testid="stButton"] > button[type="primary"] {
-    background: linear-gradient(90deg, #FF6B00, #FF8C42) !important;
+p, span, label {
+    color: #1A2A3A !important;
+}
+section[data-testid="stSidebar"] {
+    background: #0B2C4A !important;
+}
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span {
+    color: white !important;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background: #143A5A !important;
+    border-radius: 10px !important;
+    padding: 10px 12px !important;
+    margin-bottom: 8px !important;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label p,
+section[data-testid="stSidebar"] div[role="radiogroup"] label span {
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: #FF6B00 !important;
+}
+.stTextInput input, .stNumberInput input, .stSelectbox input, textarea {
+    color: #000000 !important;
+    background: white !important;
+    border: 2px solid #A5D8FF !important;
+    border-radius: 10px !important;
+}
+.stTextInput label, .stNumberInput label, .stSelectbox label {
+    color: #0B2C4A !important;
+    font-weight: 700 !important;
+}
+div[data-baseweb="select"] span {
+    color: #000000 !important;
+}
+input::placeholder {
+    color: #7A8A9A !important;
+}
+.stButton > button[kind="primary"] {
+    background: #FF6B00 !important;
     color: white !important;
     border: none !important;
     border-radius: 12px !important;
     font-weight: 800 !important;
-    font-size: 16px !important;
-    padding: 12px 20px !important;
-    box-shadow: 0 5px 15px rgba(255,107,0,0.4) !important;
 }
-.stButton > button[kind="primary"]:hover {
-    background: #EA580C !important;
-    transform: scale(1.02);
+.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span {
+    color: white !important;
 }
 .stButton > button {
-    border-radius: 12px !important;
-    border: 2px solid #FF6B00 !important;
-    color: #0C4A6E !important;
-    font-weight: 700 !important;
     background: white !important;
+    color: #0B2C4A !important;
+    border: 2px solid #FF6B00 !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
 }
-div[data-testid="stContainer"] {
-    background: white;
-    border-radius: 15px;
-    border: 1px solid #BAE6FD;
+.stButton > button p, .stButton > button span {
+    color: #0B2C4A !important;
 }
 div[data-testid="stMetric"] {
-    background: white;
+    background: #F0F9FF !important;
     padding: 15px;
-    border-radius: 15px;
-    border-left: 5px solid #FF6B00;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-}
-div[data-testid="stMetric"] label {
-    color: #0EA5E9 !important;
-    font-weight: 700 !important;
-}
-div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-    color: #0C4A6E !important;
-    font-weight: 900 !important;
-}
-.stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
-    border-radius: 10px !important;
-    border: 2px solid #7DD3FC !important;
-    background: white !important;
-}
-.stTextInput input:focus {
-    border-color: #FF6B00 !important;
-}
-div[data-testid="stDataFrame"] {
     border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #BAE6FD;
+    border-left: 5px solid #FF6B00;
 }
-div[data-testid="stSuccess"] {
-    background: #DCFCE7 !important;
-    border-radius: 10px;
+div[data-testid="stMetric"] label, div[data-testid="stMetric"] div {
+    color: #0B2C4A !important;
 }
-div[data-testid="stInfo"] {
-    background: #E0F2FE !important;
-    border-radius: 10px;
+div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span {
+    color: #1A2A3A !important;
 }
-div[data-testid="stWarning"] {
-    background: #FEF3C7 !important;
-    border-radius: 10px;
-}
-section[data-testid="stSidebar"] div[role="radiogroup"] label {
-    background: rgba(255,255,255,0.18) !important;
-    border-radius: 10px !important;
-    padding: 8px 12px !important;
-    margin-bottom: 6px !important;
-    font-weight: 700 !important;
-}
-section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-    background: rgba(255,255,255,0.35) !important;
+.stExpander summary p, .stExpander summary span {
+    color: #0B2C4A !important;
 }
 </style>
 """, unsafe_allow_html=True)
