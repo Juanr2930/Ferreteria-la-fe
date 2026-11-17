@@ -55,14 +55,20 @@ DB_LOCK = threading.Lock()
 MODO = "POSTGRES - CLOUD"
 
 def get_conn():
-    url = st.secrets["DATABASE_URL"]
-    # Supabase obliga a usar SSL, sin esto nunca conecta
-    if "sslmode" not in url:
-        if "?" in url:
-            url += "&sslmode=require"
-        else:
-            url += "?sslmode=require"
-    conn = psycopg2.connect(url, connect_timeout=10)
+    import urllib.parse as urlparse
+    raw = st.secrets["DATABASE_URL"].strip().strip('"').strip("'")
+    # Si pegaste la URL con salto de linea, lo limpiamos
+    raw = raw.replace("\n", "").replace(" ", "")
+    parsed = urlparse.urlparse(raw)
+    conn = psycopg2.connect(
+        host=parsed.hostname,
+        port=parsed.port or 6543,
+        user=parsed.username,
+        password=parsed.password,
+        dbname=parsed.path.lstrip("/"),
+        sslmode="require",
+        connect_timeout=10
+    )
     return conn
 
 def fecha_input(label, key):
