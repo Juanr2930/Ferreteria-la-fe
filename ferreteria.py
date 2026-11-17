@@ -56,12 +56,17 @@ MODO = "POSTGRES - CLOUD"
 
 def get_conn():
     import urllib.parse as urlparse
-    raw = st.secrets["DATABASE_URL"].strip().strip('"').strip("'")
-    # Si pegaste la URL con salto de linea, lo limpiamos
-    raw = raw.replace("\n", "").replace(" ", "")
+    import socket
+    raw = st.secrets["DATABASE_URL"].strip().strip('"').strip("'").replace("\n","").replace(" ","")
     parsed = urlparse.urlparse(raw)
-    conn = psycopg2.connect(
-        host=parsed.hostname,
+    host = parsed.hostname
+    # Resolvemos el host a IP a mano, para que libpq no falle con IPv4/IPv6
+    try:
+        ip = socket.gethostbyname(host)
+    except Exception:
+        ip = None
+    kwargs = dict(
+        host=host,
         port=parsed.port or 6543,
         user=parsed.username,
         password=parsed.password,
@@ -69,6 +74,9 @@ def get_conn():
         sslmode="require",
         connect_timeout=10
     )
+    if ip:
+        kwargs["hostaddr"] = ip
+    conn = psycopg2.connect(**kwargs)
     return conn
 
 def fecha_input(label, key):
