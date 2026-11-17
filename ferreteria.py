@@ -3,12 +3,13 @@ import pandas as pd
 from datetime import date, datetime
 import streamlit.components.v1 as components
 import urllib.parse
-import sqlite3, hashlib, time, json, threading
+import hashlib, time, json, threading
+import psycopg2
+import psycopg2.extras
 from io import BytesIO
 
-st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
+st.set_page_config(page_title="Ferreteria La Fe 606 PRO - CLOUD", layout="wide", page_icon="🧱")
 
-# ===== FONDO BLANCO + CUADROS AZULES - LETRA SI SE VE =====
 st.markdown("""
 <style>
 :root { color-scheme: light !important; }
@@ -16,46 +17,14 @@ html, body { background: #FFFFFF !important; }
 .stApp { background: #FFFFFF !important; color: #1A2A3A !important; }
 .stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 { color: #1A2A3A !important; }
 h1, h2, h3 { color: #0B2C4A !important; font-weight: 900 !important; }
-.main .block-container {
-    background: #143A5A !important;
-    border-radius: 18px;
-    padding: 25px 30px;
-    margin-top: 10px;
-    border: 1px solid #2A5A8A !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.10) !important;
-}
-.main .block-container p,
-.main .block-container span,
-.main .block-container label,
-.main .block-container div,
-.main .block-container h1,
-.main .block-container h2,
-.main .block-container h3,
-.main .block-container h4 { color: white !important; }
+.main .block-container { background: #143A5A !important; border-radius: 18px; padding: 25px 30px; margin-top: 10px; border: 1px solid #2A5A8A !important; }
+.main .block-container p, .main .block-container span, .main .block-container label, .main .block-container div, .main .block-container h1, .main .block-container h2, .main .block-container h3, .main .block-container h4 { color: white !important; }
 section[data-testid="stSidebar"] { background: #0B2C4A !important; }
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3,
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] div { color: white !important; }
-section[data-testid="stSidebar"] div[role="radiogroup"] label {
-    background: #143A5A !important;
-    border-radius: 10px !important;
-    padding: 10px 12px !important;
-    margin-bottom: 8px !important;
-    border: 1px solid #2A5A8A !important;
-}
-section[data-testid="stSidebar"] div[role="radiogroup"] label p,
-section[data-testid="stSidebar"] div[role="radiogroup"] label span { color: white !important; font-weight: 700 !important; font-size: 15px !important; }
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] div { color: white !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] label { background: #143A5A !important; border-radius: 10px !important; padding: 10px 12px !important; margin-bottom: 8px !important; border: 1px solid #2A5A8A !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] label p, section[data-testid="stSidebar"] div[role="radiogroup"] label span { color: white !important; font-weight: 700 !important; font-size: 15px !important; }
 section[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: #FF6B00 !important; }
-.stTextInput input, .stNumberInput input, .stSelectbox input, textarea {
-    color: #000000 !important;
-    background: white !important;
-    border: 2px solid #FF6B00 !important;
-    border-radius: 10px !important;
-}
+.stTextInput input, .stNumberInput input, .stSelectbox input, textarea { color: #000000 !important; background: white !important; border: 2px solid #FF6B00 !important; border-radius: 10px !important; }
 .stTextInput label, .stNumberInput label, .stSelectbox label { color: white !important; font-weight: 700 !important; }
 div[data-baseweb="select"] > div { background: white !important; color: black !important; }
 div[data-baseweb="select"] span { color: #000000 !important; }
@@ -80,17 +49,13 @@ div[data-testid="stDataEditor"] div { color: black !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ===== FIX MULTI-CAJA - YA ARREGLADO =====
-DB_FILE = "lafe_606.db"
+# ===== CLOUD - SUPABASE POSTGRES - SIN SQLITE =====
 CLAVE_JEFE = "6060"
 DB_LOCK = threading.Lock()
+MODO = "POSTGRES - CLOUD"
 
 def get_conn():
-    conn = sqlite3.connect(DB_FILE, check_same_thread=False, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA busy_timeout = 30000;")
-    conn.execute("PRAGMA synchronous = NORMAL;")
+    conn = psycopg2.connect(st.secrets["DATABASE_URL"])
     return conn
 
 def fecha_input(label, key):
@@ -101,19 +66,19 @@ def fecha_input(label, key):
 def init_db():
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("PRAGMA journal_mode=WAL;")
-    cur.executescript("""
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS inventario (Codigo TEXT PRIMARY KEY, Producto TEXT, Precio REAL, Stock INTEGER, Cat TEXT, Icono TEXT);
     CREATE TABLE IF NOT EXISTS fiados (Cliente TEXT, WhatsApp TEXT, WhatsApp_Display TEXT, Monto REAL, Fecha TEXT, Vence TEXT, QueLlevo TEXT, Estado TEXT);
     CREATE TABLE IF NOT EXISTS ventas_config (clave TEXT PRIMARY KEY, valor TEXT);
-    CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, Nombre TEXT, RNC TEXT, Telefono TEXT, WhatsApp TEXT, Direccion TEXT, FechaRegistro TEXT);
-    CREATE TABLE IF NOT EXISTS facturas (id INTEGER PRIMARY KEY AUTOINCREMENT, Numero INTEGER, NCF TEXT, Cliente TEXT, RNC TEXT, Telefono TEXT, Fecha TEXT, Items TEXT, Subtotal REAL, Itbis REAL, Total REAL, Estado TEXT, TipoComprobante TEXT);
-    INSERT OR IGNORE INTO ventas_config VALUES ('ventas_hoy','0');
-    INSERT OR IGNORE INTO ventas_config VALUES ('contador_factura','1');
-    INSERT OR IGNORE INTO ventas_config VALUES ('contador_ncf','1');
+    CREATE TABLE IF NOT EXISTS clientes (id SERIAL PRIMARY KEY, Nombre TEXT, RNC TEXT, Telefono TEXT, WhatsApp TEXT, Direccion TEXT, FechaRegistro TEXT);
+    CREATE TABLE IF NOT EXISTS facturas (id SERIAL PRIMARY KEY, Numero INTEGER, NCF TEXT, Cliente TEXT, RNC TEXT, Telefono TEXT, Fecha TEXT, Items TEXT, Subtotal REAL, Itbis REAL, Total REAL, Estado TEXT, TipoComprobante TEXT);
+    INSERT INTO ventas_config VALUES ('ventas_hoy','0') ON CONFLICT DO NOTHING;
+    INSERT INTO ventas_config VALUES ('contador_factura','1') ON CONFLICT DO NOTHING;
+    INSERT INTO ventas_config VALUES ('contador_ncf','1') ON CONFLICT DO NOTHING;
     """)
     conn.commit()
-    count = cur.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM inventario")
+    count = cur.fetchone()[0]
     if count == 0:
         productos = [
             ("CEM001","Cemento Panam 94lbs",550,120,"Cemento","🏗️"),
@@ -130,7 +95,8 @@ def init_db():
             ("ARE001","Arena Lavada m3",2500,20,"Agregados","🏖️"),
             ("GRAV01","Grava m3",2800,15,"Agregados","🪨"),
         ]
-        cur.executemany("INSERT INTO inventario VALUES (?,?,?,?,?,?)", productos)
+        for p in productos:
+            cur.execute("INSERT INTO inventario VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING", p)
     conn.commit()
     conn.close()
 
@@ -144,8 +110,10 @@ def generar_clave(n,t):
 def generar_ncf():
     with DB_LOCK:
         conn = get_conn()
-        n = int(float(conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_ncf'").fetchone()[0]))
-        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('contador_ncf',?)", (str(n+1),))
+        cur = conn.cursor()
+        cur.execute("SELECT valor FROM ventas_config WHERE clave='contador_ncf'")
+        n = int(float(cur.fetchone()[0]))
+        cur.execute("INSERT INTO ventas_config VALUES ('contador_ncf',%s) ON CONFLICT (clave) DO UPDATE SET valor=EXCLUDED.valor", (str(n+1),))
         conn.commit()
         conn.close()
     return f"B02{str(n).zfill(8)}", n
@@ -153,8 +121,9 @@ def generar_ncf():
 def cerrar_dia_completo():
     with DB_LOCK:
         conn = get_conn()
-        conn.execute("DELETE FROM facturas")
-        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy','0')")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM facturas")
+        cur.execute("INSERT INTO ventas_config VALUES ('ventas_hoy','0') ON CONFLICT (clave) DO UPDATE SET valor=EXCLUDED.valor")
         conn.commit()
         conn.close()
     st.session_state.ventas_hoy = 0
@@ -169,7 +138,7 @@ if 'lic_activa' not in st.session_state:
     st.session_state.negocio_nombre="Ferreteria La Fe"
 
 if not st.session_state.lic_activa:
-    st.markdown("# 🔒 Sistema 606 PRO - RD$ 25,000")
+    st.markdown("# 🔒 Sistema 606 PRO - CLOUD")
     c1,c2=st.columns(2)
     with c1:
         nom=st.text_input("Nombre ferreteria",value="ferreteria juan")
@@ -196,8 +165,11 @@ def cargar_sql():
         df_inv=pd.read_sql("SELECT * FROM inventario",conn)
         df_f=pd.read_sql("SELECT * FROM fiados",conn)
         fiados=df_f.to_dict('records') if not df_f.empty else []
-        v=float(conn.execute("SELECT valor FROM ventas_config WHERE clave='ventas_hoy'").fetchone()[0])
-        c=int(float(conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_factura'").fetchone()[0]))
+        cur=conn.cursor()
+        cur.execute("SELECT valor FROM ventas_config WHERE clave='ventas_hoy'")
+        v=float(cur.fetchone()[0])
+        cur.execute("SELECT valor FROM ventas_config WHERE clave='contador_factura'")
+        c=int(float(cur.fetchone()[0]))
         conn.close()
         return df_inv,fiados,v,c
     except:
@@ -207,32 +179,37 @@ def cargar_sql():
 def save_inv(df):
     with DB_LOCK:
         conn=get_conn()
-        conn.execute("DELETE FROM inventario")
-        df.to_sql("inventario",conn,if_exists="append",index=False)
+        cur=conn.cursor()
+        cur.execute("DELETE FROM inventario")
+        for _,r in df.iterrows():
+            cur.execute("INSERT INTO inventario VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (Codigo) DO UPDATE SET Producto=EXCLUDED.Producto, Precio=EXCLUDED.Precio, Stock=EXCLUDED.Stock, Cat=EXCLUDED.Cat, Icono=EXCLUDED.Icono", (r["Codigo"],r["Producto"],float(r["Precio"]),int(r["Stock"]),r["Cat"],r["Icono"]))
         conn.commit()
         conn.close()
 
 def save_fiados(lista):
     with DB_LOCK:
         conn=get_conn()
-        conn.execute("DELETE FROM fiados")
+        cur=conn.cursor()
+        cur.execute("DELETE FROM fiados")
         if lista:
-            df_temp = pd.DataFrame(lista)
-            df_temp.to_sql("fiados",conn,if_exists="append",index=False)
+            for f in lista:
+                cur.execute("INSERT INTO fiados VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (f.get("Cliente",""),f.get("WhatsApp",""),f.get("WhatsApp_Display",""),float(f.get("Monto",0)),f.get("Fecha",""),f.get("Vence",""),f.get("QueLlevo",""),f.get("Estado","Pendiente")))
         conn.commit()
         conn.close()
 
 def save_ventas(m):
     with DB_LOCK:
         conn=get_conn()
-        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy',?)",(str(m),))
+        cur=conn.cursor()
+        cur.execute("INSERT INTO ventas_config VALUES ('ventas_hoy',%s) ON CONFLICT (clave) DO UPDATE SET valor=EXCLUDED.valor",(str(m),))
         conn.commit()
         conn.close()
 
 def save_contador(n):
     with DB_LOCK:
         conn=get_conn()
-        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('contador_factura',?)",(str(n),))
+        cur=conn.cursor()
+        cur.execute("INSERT INTO ventas_config VALUES ('contador_factura',%s) ON CONFLICT (clave) DO UPDATE SET valor=EXCLUDED.valor",(str(n),))
         conn.commit()
         conn.close()
 
@@ -314,15 +291,15 @@ def html_codigos_barra(df):
 
 with st.sidebar:
     st.title(st.session_state.negocio_nombre)
-    st.success(f"🔒 {st.session_state.lic_key}")
-    menu=st.radio("Ir a:", ["🛒 Punto de Venta","👥 Clientes","🧾 Facturas","📦 Catalogo","🏷️ Codigos de Barra","🧮 Calculadora Materiales","📓 Fiado","📊 Cierre","🔐 Inventario Jefe","🔍 Ver Base de Datos SQL"])
+    st.success(f"🔒 {st.session_state.lic_key} | CLOUD")
+    menu=st.radio("Ir a:", ["🛒 Punto de Venta","👥 Clientes","🧾 Facturas","📦 Catalogo","🏷️ Codigos de Barra","🧮 Calculadora Materiales","📓 Fiado","📊 Cierre","🔐 Inventario Jefe","🔍 Ver Base de Datos"])
     st.divider()
-    if st.button("💾 Guardar en SQL",type="primary",use_container_width=True):
+    if st.button("💾 Guardar en Nube",type="primary",use_container_width=True):
         save_inv(st.session_state.inventario)
         save_fiados(st.session_state.fiados)
         save_ventas(st.session_state.ventas_hoy)
         save_contador(st.session_state.contador_factura)
-        st.success("Guardado!")
+        st.success("Guardado en Supabase!")
     if st.button("🔄 Recargar Datos de las Otras Cajas", use_container_width=True):
         df_s,f_s,v_s,c_s = cargar_sql()
         st.session_state.inventario = df_s
@@ -332,9 +309,9 @@ with st.sidebar:
         st.rerun()
 
 if menu=="🛒 Punto de Venta":
-    st.title("🛒 Punto de Venta")
+    st.title("🛒 Punto de Venta - CLOUD")
     df_cli = cargar_clientes()
-    st.subheader("1️⃣ Elige Cliente para esta venta")
+    st.subheader("1️⃣ Elige Cliente")
     c_cli1, c_cli2, c_cli3 = st.columns([2,1,1])
     with c_cli1:
         opciones = ["Cliente Mostrador"] + df_cli["Nombre"].tolist() if not df_cli.empty else ["Cliente Mostrador"]
@@ -350,12 +327,12 @@ if menu=="🛒 Punto de Venta":
         rnc_manual = st.text_input("RNC / Cedula", value=st.session_state.rnc_seleccionado, placeholder="130-00000-1")
         st.session_state.rnc_seleccionado = rnc_manual
     with c_cli3:
-        st.caption("Si no existe, ve a 👥 Clientes y crealo")
+        st.caption("Si no existe, ve a 👥 Clientes")
     st.divider()
     c1,c2=st.columns([2,1])
     with c1:
         st.subheader("2️⃣ Busca y Agrega Productos")
-        cod=st.text_input("Pistolea codigo",placeholder="CEM001, CEM002, VAR001, etc - Sin lector, solo escribe el codigo")
+        cod=st.text_input("Pistolea codigo",placeholder="CEM001, VAR001, etc")
         if st.button("Buscar Codigo"):
             inv=st.session_state.inventario
             match=inv[inv["Codigo"].str.upper().str.strip()==cod.upper().strip()]
@@ -363,7 +340,7 @@ if menu=="🛒 Punto de Venta":
                 row=match.iloc[0]
                 agregar({"Producto":row['Producto'],"Icono":row['Icono'],"Cant":1,"Precio":row['Precio'],"Total":row['Precio'],"Codigo":row['Codigo']})
                 st.rerun()
-        buscador=st.text_input("🔍 Busca producto",placeholder="cemex, clavo, varilla, block, alambre, pintura, arena, grava")
+        buscador=st.text_input("🔍 Busca producto",placeholder="cemex, clavo, varilla, block")
         df_inv = st.session_state.inventario.copy()
         if buscador and buscador.strip() != "":
             texto = buscador.strip().lower()
@@ -382,7 +359,7 @@ if menu=="🛒 Punto de Venta":
                         agregar({"Producto":row['Producto'],"Icono":row['Icono'],"Cant":cant,"Precio":row['Precio'],"Total":cant*row['Precio'],"Codigo":row['Codigo']})
                         st.rerun()
     with c2:
-        st.subheader("3️⃣ Carrito - Puedes Editar Aqui")
+        st.subheader("3️⃣ Carrito")
         if st.session_state.carrito:
             for idx, it in enumerate(list(st.session_state.carrito)):
                 with st.container(border=True):
@@ -410,7 +387,8 @@ if menu=="🛒 Punto de Venta":
                 num=st.session_state.contador_factura
                 with DB_LOCK:
                     conn=get_conn()
-                    conn.execute("INSERT INTO facturas (Numero, NCF, Cliente, RNC, Telefono, Fecha, Items, Subtotal, Itbis, Total, Estado, TipoComprobante) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    cur=conn.cursor()
+                    cur.execute("INSERT INTO facturas (Numero, NCF, Cliente, RNC, Telefono, Fecha, Items, Subtotal, Itbis, Total, Estado, TipoComprobante) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                         (num, "", st.session_state.cliente_seleccionado, st.session_state.rnc_seleccionado, "", datetime.now().strftime("%d/%m/%Y %I:%M %p"), json.dumps(st.session_state.carrito), sub, itbis, total, "Pendiente - Por Revisar", tipo_comp))
                     conn.commit()
                     conn.close()
@@ -424,7 +402,7 @@ if menu=="🛒 Punto de Venta":
                 st.session_state.carrito=[]
                 st.rerun()
         else:
-            st.info("Carrito vacio. Agrega productos a la izquierda.")
+            st.info("Carrito vacio.")
         if st.session_state.ultima_factura:
             st.download_button("Descargar TXT",st.session_state.ultima_factura["texto"],file_name=f"FACTURA_{st.session_state.ultima_factura['num']:06d}.txt",use_container_width=True)
             imprimir_factura_html(st.session_state.ultima_factura["texto"],st.session_state.ultima_factura["num"])
@@ -436,7 +414,7 @@ elif menu=="👥 Clientes":
         st.subheader("➕ Nuevo Cliente")
         with st.form("nuevo_cliente",clear_on_submit=True):
             nom_c=st.text_input("Nombre Completo *", placeholder="Juan Perez")
-            rnc_c=st.text_input("RNC / Cedula *", placeholder="001-1234567-8 o 130-00000-1")
+            rnc_c=st.text_input("RNC / Cedula *", placeholder="001-1234567-8")
             tel_c=st.text_input("Telefono", placeholder="829-264-7574")
             wa_c=st.text_input("WhatsApp", placeholder="8292647574")
             dir_c=st.text_input("Direccion", placeholder="Quisqueya, San Pedro")
@@ -448,7 +426,8 @@ elif menu=="👥 Clientes":
                 else:
                     with DB_LOCK:
                         conn=get_conn()
-                        conn.execute("INSERT INTO clientes (Nombre,RNC,Telefono,WhatsApp,Direccion,FechaRegistro) VALUES (?,?,?,?,?,?)",(nom_c.strip(), rnc_c, tel_c, wa_c, dir_c, str(fecha_c)))
+                        cur=conn.cursor()
+                        cur.execute("INSERT INTO clientes (Nombre,RNC,Telefono,WhatsApp,Direccion,FechaRegistro) VALUES (%s,%s,%s,%s,%s,%s)",(nom_c.strip(), rnc_c, tel_c, wa_c, dir_c, str(fecha_c)))
                         conn.commit()
                         conn.close()
                     st.success(f"Cliente {nom_c} guardado")
@@ -470,7 +449,8 @@ elif menu=="👥 Clientes":
                     if st.button(f"🗑️ Borrar {r['Nombre']}", key=f"del_cli_{r['id']}"):
                         with DB_LOCK:
                             conn=get_conn()
-                            conn.execute("DELETE FROM clientes WHERE id=?", (int(r['id']),))
+                            cur=conn.cursor()
+                            cur.execute("DELETE FROM clientes WHERE id=%s", (int(r['id']),))
                             conn.commit()
                             conn.close()
                         st.rerun()
@@ -480,11 +460,12 @@ elif menu=="🧾 Facturas":
     if st.button("🧹 LIMPIAR TODAS LAS FACTURAS DEL DIA", use_container_width=True):
         with DB_LOCK:
             conn=get_conn()
-            conn.execute("DELETE FROM facturas")
+            cur=conn.cursor()
+            cur.execute("DELETE FROM facturas")
             conn.commit()
             conn.close()
         st.session_state.ultima_factura=None
-        st.success("Facturas limpiadas, ya no aparecen para imprimir")
+        st.success("Facturas limpiadas")
         st.rerun()
     df_fact = cargar_facturas()
     if df_fact.empty:
@@ -533,7 +514,8 @@ elif menu=="🧾 Facturas":
                             new_total = new_sub*1.18
                             with DB_LOCK:
                                 conn=get_conn()
-                                conn.execute("UPDATE facturas SET Items=?, Subtotal=?, Itbis=?, Total=? WHERE id=?", (json.dumps(items_editados), new_sub, new_itbis, new_total, int(fac['id'])))
+                                cur=conn.cursor()
+                                cur.execute("UPDATE facturas SET Items=%s, Subtotal=%s, Itbis=%s, Total=%s WHERE id=%s", (json.dumps(items_editados), new_sub, new_itbis, new_total, int(fac['id'])))
                                 conn.commit()
                                 conn.close()
                             st.success("Cambios guardados")
@@ -559,7 +541,8 @@ elif menu=="🧾 Facturas":
                             save_ventas(st.session_state.ventas_hoy)
                             with DB_LOCK:
                                 conn=get_conn()
-                                conn.execute("UPDATE facturas SET Items=?, Subtotal=?, Itbis=?, Total=?, Estado=?, NCF=? WHERE id=?", (json.dumps(items_editados), new_sub, new_itbis, new_total, "Impresa / Cobrada", ncf_nuevo, int(fac['id'])))
+                                cur=conn.cursor()
+                                cur.execute("UPDATE facturas SET Items=%s, Subtotal=%s, Itbis=%s, Total=%s, Estado=%s, NCF=%s WHERE id=%s", (json.dumps(items_editados), new_sub, new_itbis, new_total, "Impresa / Cobrada", ncf_nuevo, int(fac['id'])))
                                 conn.commit()
                                 conn.close()
                             st.success(f"Factura aprobada con NCF {ncf_nuevo}")
@@ -567,7 +550,8 @@ elif menu=="🧾 Facturas":
                     if st.button(f"🗑️ Anular Factura #{int(fac['Numero']):06d}", key=f"anular_{fac['id']}"):
                         with DB_LOCK:
                             conn=get_conn()
-                            conn.execute("DELETE FROM facturas WHERE id=?", (int(fac['id']),))
+                            cur=conn.cursor()
+                            cur.execute("DELETE FROM facturas WHERE id=%s", (int(fac['id']),))
                             conn.commit()
                             conn.close()
                         st.rerun()
@@ -587,7 +571,7 @@ elif menu=="🏷️ Codigos de Barra":
 
 elif menu=="🧮 Calculadora Materiales":
     st.title("🧮 Calculadora - 8 Opciones")
-    st.caption("Ahora al agregar al carrito, se agregan los materiales uno por uno, no como un solo paquete. Asi la factura sale detallada.")
+    st.caption("Al agregar al carrito, se agregan los materiales uno por uno, no como un solo paquete.")
     obra=st.selectbox("Que va a construir?", ["Pared de Blocks", "Casita 3x3 Completa", "Zapata Aislada", "Columna 3m", "Viga 4m", "Piso / Losa 10m2", "Techo Zinc 20m2", "Empanete 20m2"])
     if obra=="Pared de Blocks":
         c1,c2,c3=st.columns(3)
@@ -781,7 +765,7 @@ elif menu=="📓 Fiado":
                             st.rerun()
 
 elif menu=="📊 Cierre":
-    st.title("📊 Cierre de Caja + Reporte Excel PRO")
+    st.title("📊 Cierre de Caja + Reporte Excel PRO - CLOUD")
     ventas=st.session_state.get('ventas_hoy',0)
     fiados_list=st.session_state.get('fiados',[])
     try:
@@ -867,7 +851,7 @@ elif menu=="📊 Cierre":
                 st.error(f"FALTA RD$ {abs(dif):,.2f}")
         if st.button("🔒 Cerrar Dia y Limpiar Facturas",type="primary",use_container_width=True):
             cerrar_dia_completo()
-            st.success("✅ Dia cerrado. Facturas limpiadas. Ya puedes empezar mañana sin reiniciar.")
+            st.success("✅ Dia cerrado. Facturas limpiadas.")
             st.balloons()
             time.sleep(0.5)
             st.rerun()
@@ -898,7 +882,7 @@ elif menu=="🔐 Inventario Jefe":
     st.subheader("📦 Inventario Editable - Solo Jefe")
     try:
         df_edit=st.data_editor(st.session_state.inventario[["Codigo","Producto","Stock","Precio","Cat","Icono"]],use_container_width=True,num_rows="dynamic")
-        if st.button("💾 Guardar Cambios en SQL - Jefe",type="primary",use_container_width=True):
+        if st.button("💾 Guardar Cambios en Nube - Jefe",type="primary",use_container_width=True):
             st.session_state.inventario = df_edit.copy()
             save_inv(st.session_state.inventario)
             st.success("Guardado por el Jefe!")
@@ -923,16 +907,17 @@ elif menu=="🔐 Inventario Jefe":
     except Exception as e:
         st.error(f"Error: {e}")
 
-elif menu=="🔍 Ver Base de Datos SQL":
-    st.title("🔍 Base de Datos SQL - La Fe 606")
+elif menu=="🔍 Ver Base de Datos":
+    st.title("🔍 Base de Datos - Supabase CLOUD")
     conn = get_conn()
     try:
-        total_prod = conn.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
-        total_fiados = conn.execute("SELECT COUNT(*) FROM fiados").fetchone()[0]
-        total_stock = conn.execute("SELECT SUM(Stock) FROM inventario").fetchone()[0] or 0
-        valor_inv = conn.execute("SELECT SUM(Stock*Precio) FROM inventario").fetchone()[0] or 0
-        ventas_hoy_db = conn.execute("SELECT valor FROM ventas_config WHERE clave='ventas_hoy'").fetchone()[0]
-        contador_db = conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_factura'").fetchone()[0]
+        cur=conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM inventario"); total_prod=cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM fiados"); total_fiados=cur.fetchone()[0]
+        cur.execute("SELECT SUM(Stock) FROM inventario"); total_stock=cur.fetchone()[0] or 0
+        cur.execute("SELECT SUM(Stock*Precio) FROM inventario"); valor_inv=cur.fetchone()[0] or 0
+        cur.execute("SELECT valor FROM ventas_config WHERE clave='ventas_hoy'"); ventas_hoy_db=cur.fetchone()[0]
+        cur.execute("SELECT valor FROM ventas_config WHERE clave='contador_factura'"); contador_db=cur.fetchone()[0]
     except Exception as e:
         total_prod, total_fiados, total_stock, valor_inv = 0,0,0,0
         ventas_hoy_db, contador_db = "0","1"
@@ -941,7 +926,7 @@ elif menu=="🔍 Ver Base de Datos SQL":
     c2.metric("📓 Fiados", total_fiados)
     c3.metric("📊 Stock Total", f"{total_stock:,}")
     c4.metric("💰 Valor Inventario", f"RD$ {valor_inv:,.0f}")
-    st.caption(f"Ventas Hoy: RD$ {float(ventas_hoy_db):,.0f} | Proxima Factura: {int(float(contador_db)):06d}")
+    st.caption(f"Ventas Hoy: RD$ {float(ventas_hoy_db):,.0f} | Proxima Factura: {int(float(contador_db)):06d} | MODO: CLOUD")
     st.divider()
     tabla = st.selectbox("Elige tabla:", ["inventario", "fiados", "ventas_config", "clientes", "facturas"])
     buscar = st.text_input("🔎 Buscar en esta tabla...", placeholder="Ej: cemento, varilla, Juan, CEM001...")
@@ -957,7 +942,7 @@ elif menu=="🔍 Ver Base de Datos SQL":
             csv = df_sql.to_csv(index=False).encode('utf-8')
             st.download_button(f"⬇️ Descargar {tabla} CSV", data=csv, file_name=f"{tabla}_lafe606.csv", mime="text/csv", use_container_width=True)
         with col_e:
-            if st.button("🔄 Recargar desde SQL", use_container_width=True):
+            if st.button("🔄 Recargar desde Nube", use_container_width=True):
                 st.rerun()
     except Exception as e:
         st.error(f"Error: {e}")
