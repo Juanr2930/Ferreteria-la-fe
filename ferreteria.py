@@ -57,11 +57,35 @@ DB_LOCK = threading.Lock()
 MODO = "POSTGRES - CLOUD"
 
 def get_conn():
-    raw = st.secrets["DATABASE_URL"].strip().strip('"').strip("'").replace("\n", "").replace(" ", "")
-    parsed = urlparse.urlparse(raw)
-    host = parsed.hostname
+    import re
+    raw = str(st.secrets["DATABASE_URL"]).strip()
+    # Quitamos comillas, corchetes, espacios y saltos de línea que rompen el urlparse
+    raw = raw.strip().strip('"').strip("'").strip("[]").replace("\n", "").replace(" ", "").replace("[", "").replace("]", "")
+    # Quitamos el postgres://
+    if "://" in raw:
+        raw = raw.split("://", 1)[1]
+    # Separamos usuario:clave @ host:puerto/base - usamos el ÚLTIMO @ por si la clave tiene @
+    # Formato: usuario.clave@host:6543/postgres
+    user_pass, _, host_db = raw.rpartition("@")
+    if not host_db:
+        raise ValueError("DATABASE_URL mal formada, falta el @")
+    if ":" in user_pass:
+        user, _, password = user_pass.partition(":")
+    else:
+        user, password = user_pass, ""
+    # host_db = aws-0-us-east-2.pooler.supabase.com:6543/postgres
+    host_port, _, dbname = host_db.partition("/")
+    if ":" in host_port:
+        host, _, port = host_port.rpartition(":")
+    else:
+        host, port = host_port, "6543"
+    # La clave puede venir con %40 %23 etc, la decodificamos
+    import urllib.parse as _up
+    user = _up.unquote(user)
+    password = _up.unquote(password)
+    dbname = _up.unquote(dbname) or "postgres"
 
-    # Resolvemos el host a IP a mano para que Streamlit no falle con DNS / IPv4 / IPv6
+    # Resolvemos el host a IP a mano
     try:
         ip = socket.gethostbyname(host)
     except Exception:
@@ -69,10 +93,10 @@ def get_conn():
 
     kwargs = dict(
         host=host,
-        port=parsed.port or 6543,
-        user=parsed.username,
-        password=parsed.password,
-        dbname=parsed.path.lstrip("/"),
+        port=int(port),
+        user=user,
+        password=password,
+        dbname=dbname,
         sslmode="require",
         connect_timeout=10
     )
