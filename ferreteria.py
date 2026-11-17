@@ -7,8 +7,86 @@ import sqlite3, hashlib, time, json
 from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
+
+# ===== FONDO BLANCO + CUADROS AZULES - LETRA SI SE VE =====
+st.markdown("""
+<style>
+:root { color-scheme: light !important; }
+html, body { background: #FFFFFF !important; }
+.stApp { background: #FFFFFF !important; color: #1A2A3A !important; }
+.stApp p, .stApp span, .stApp label, .stApp div, h1, h2, h3, h4 { color: #1A2A3A !important; }
+h1, h2, h3 { color: #0B2C4A !important; font-weight: 900 !important; }
+.main .block-container {
+    background: #143A5A !important;
+    border-radius: 18px;
+    padding: 25px 30px;
+    margin-top: 10px;
+    border: 1px solid #2A5A8A !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10) !important;
+}
+.main .block-container p,
+.main .block-container span,
+.main .block-container label,
+.main .block-container div,
+.main .block-container h1,
+.main .block-container h2,
+.main .block-container h3,
+.main .block-container h4 { color: white !important; }
+section[data-testid="stSidebar"] { background: #0B2C4A !important; }
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] div { color: white !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background: #143A5A !important;
+    border-radius: 10px !important;
+    padding: 10px 12px !important;
+    margin-bottom: 8px !important;
+    border: 1px solid #2A5A8A !important;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label p,
+section[data-testid="stSidebar"] div[role="radiogroup"] label span { color: white !important; font-weight: 700 !important; font-size: 15px !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: #FF6B00 !important; }
+.stTextInput input, .stNumberInput input, .stSelectbox input, textarea {
+    color: #000000 !important;
+    background: white !important;
+    border: 2px solid #FF6B00 !important;
+    border-radius: 10px !important;
+}
+.stTextInput label, .stNumberInput label, .stSelectbox label { color: white !important; font-weight: 700 !important; }
+div[data-baseweb="select"] > div { background: white !important; color: black !important; }
+div[data-baseweb="select"] span { color: #000000 !important; }
+input::placeholder { color: #7A8A9A !important; }
+::selection { background: #FF6B00 !important; color: white !important; }
+.stButton > button[kind="primary"] { background: #FF6B00 !important; color: white !important; border: none !important; border-radius: 12px !important; font-weight: 800 !important; }
+.stButton > button[kind="primary"] p, .stButton > button[kind="primary"] span { color: white !important; }
+.stButton > button { background: #1E4A7A !important; color: white !important; border: 2px solid #FF6B00 !important; border-radius: 12px !important; font-weight: 700 !important; }
+.stButton > button p, .stButton > button span { color: white !important; }
+div[data-testid="stMetric"] { background: #1E4A7A !important; padding: 15px; border-radius: 12px; border-left: 5px solid #FF6B00; border: 1px solid #2A5A8A !important; }
+div[data-testid="stMetric"] label, div[data-testid="stMetric"] div, div[data-testid="stMetric"] p, div[data-testid="stMetric"] span { color: white !important; }
+div[data-testid="stDataFrame"] { background: white !important; border-radius: 10px !important; }
+div[data-testid="stDataFrame"] div, div[data-testid="stDataFrame"] span { color: #000000 !important; }
+div[data-testid="stAlert"] { background: #1E4A7A !important; color: white !important; border: 1px solid #2A5A8A !important; border-radius: 12px !important; }
+div[data-testid="stAlert"] p, div[data-testid="stAlert"] span, div[data-testid="stAlert"] div { color: white !important; }
+div[data-testid="stContainer"] { background: #1E4A7A !important; border: 1px solid #2A5A8A !important; border-radius: 12px !important; }
+div[data-testid="stContainer"] p, div[data-testid="stContainer"] span, div[data-testid="stContainer"] label, div[data-testid="stContainer"] div { color: white !important; }
+.stExpander summary p, .stExpander summary span { color: white !important; }
+.stExpander { background: #1E4A7A !important; border: 1px solid #2A5A8A !important; }
+button[data-testid="stNumberInputStepUp"], button[data-testid="stNumberInputStepDown"] { background: #0B2C4A !important; color: white !important; }
+div[data-testid="stDataEditor"] div { color: black !important; }
+</style>
+""", unsafe_allow_html=True)
+
 DB_FILE = "lafe_606.db"
 CLAVE_JEFE = "6060"
+
+def fecha_input(label, key):
+    hoy = date.today().strftime("%d/%m/%Y")
+    valor = st.text_input(label, value=hoy, placeholder="DD/MM/AAAA Ej: 06/11/2026", key=key)
+    return valor
 
 def get_conn():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
@@ -29,7 +107,6 @@ def init_db():
     INSERT OR IGNORE INTO ventas_config VALUES ('contador_ncf','1');
     """)
     conn.commit()
-    # Solo cargar productos iniciales si esta vacio, para que no se borre tu inventario cada vez que abres
     count = cur.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
     if count == 0:
         productos = [
@@ -65,6 +142,22 @@ def generar_ncf():
     conn.commit()
     conn.close()
     return f"B02{str(n).zfill(8)}", n
+
+# ===== FUNCION NUEVA: CERRAR DIA BIEN, SIN REINICIAR =====
+def cerrar_dia_completo():
+    conn = get_conn()
+    # 1. Borra todas las facturas del dia (las que salian para imprimir)
+    conn.execute("DELETE FROM facturas")
+    # 2. Pone ventas en 0
+    conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy','0')")
+    conn.commit()
+    conn.close()
+    # 3. Limpia todo en memoria para que no haya que reiniciar
+    st.session_state.ventas_hoy = 0
+    st.session_state.carrito = []
+    st.session_state.ultima_factura = None
+    st.session_state.calc_detalle = None
+    st.session_state.calc_items = []
 
 if 'lic_activa' not in st.session_state:
     st.session_state.lic_activa=False
@@ -157,10 +250,10 @@ if 'carrito' not in st.session_state:
     st.session_state.carrito=[]
 if 'ultima_factura' not in st.session_state:
     st.session_state.ultima_factura=None
-if 'calc_temp' not in st.session_state:
-    st.session_state.calc_temp=None
 if 'calc_detalle' not in st.session_state:
     st.session_state.calc_detalle=None
+if 'calc_items' not in st.session_state:
+    st.session_state.calc_items=[]
 if 'cliente_seleccionado' not in st.session_state:
     st.session_state.cliente_seleccionado="Cliente Mostrador"
 if 'rnc_seleccionado' not in st.session_state:
@@ -223,10 +316,8 @@ with st.sidebar:
         save_contador(st.session_state.contador_factura)
         st.success("Guardado!")
 
-# ================= PUNTO DE VENTA CON CARRITO EDITABLE =================
 if menu=="🛒 Punto de Venta":
     st.title("🛒 Punto de Venta")
-    # Selector de cliente intuitivo
     df_cli = cargar_clientes()
     st.subheader("1️⃣ Elige Cliente para esta venta")
     c_cli1, c_cli2, c_cli3 = st.columns([2,1,1])
@@ -245,9 +336,6 @@ if menu=="🛒 Punto de Venta":
         st.session_state.rnc_seleccionado = rnc_manual
     with c_cli3:
         st.caption("Si no existe, ve a 👥 Clientes y crealo")
-        if st.button("➕ Nuevo Cliente Rapido"):
-            st.switch_page("app.py")
-
     st.divider()
     c1,c2=st.columns([2,1])
     with c1:
@@ -280,12 +368,10 @@ if menu=="🛒 Punto de Venta":
                         st.rerun()
     with c2:
         st.subheader("3️⃣ Carrito - Puedes Editar Aqui")
-        st.caption("Cambia cantidad o quita algo antes de facturar. Nada se factura solo.")
         if st.session_state.carrito:
-            # Carrito editable
             for idx, it in enumerate(list(st.session_state.carrito)):
                 with st.container(border=True):
-                    st.write(f"{it.get('Icono','')} **{it['Producto'][:28]}**")
+                    st.write(f"{it.get('Icono','')} **{it['Producto'][:32]}**")
                     cc1, cc2, cc3 = st.columns([2,1,1])
                     with cc1:
                         nueva_cant = st.number_input("Cant", min_value=1, max_value=1000, value=int(it['Cant']), key=f"edit_cant_{idx}")
@@ -307,7 +393,6 @@ if menu=="🛒 Punto de Venta":
             tipo_comp = st.selectbox("Tipo Comprobante DGII", ["B02 - Consumo (sin RNC)", "B01 - Credito Fiscal (con RNC)", "B04 - Regimen Especial"])
             if st.button("📝 ENVIAR A FACTURACION (No cobra aun)",type="primary",use_container_width=True):
                 num=st.session_state.contador_factura
-                # Guardar como BORRADOR, no cobra, no descuenta stock todavia
                 conn=get_conn()
                 conn.execute("INSERT INTO facturas (Numero, NCF, Cliente, RNC, Telefono, Fecha, Items, Subtotal, Itbis, Total, Estado, TipoComprobante) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (num, "", st.session_state.cliente_seleccionado, st.session_state.rnc_seleccionado, "", datetime.now().strftime("%d/%m/%Y %I:%M %p"), json.dumps(st.session_state.carrito), sub, itbis, total, "Pendiente - Por Revisar", tipo_comp))
@@ -316,7 +401,7 @@ if menu=="🛒 Punto de Venta":
                 st.session_state.contador_factura+=1
                 save_contador(st.session_state.contador_factura)
                 st.session_state.carrito=[]
-                st.success(f"✅ Factura #{num:06d} enviada a Facturacion. La persona que imprime la puede editar.")
+                st.success(f"✅ Factura #{num:06d} enviada a Facturacion.")
                 st.balloons()
                 st.rerun()
             if st.button("Vaciar carrito"):
@@ -329,8 +414,7 @@ if menu=="🛒 Punto de Venta":
             imprimir_factura_html(st.session_state.ultima_factura["texto"],st.session_state.ultima_factura["num"])
 
 elif menu=="👥 Clientes":
-    st.title("👥 Clientes - Base de Datos de Clientes")
-    st.caption("Aqui guardas nombre, RNC, telefono, fecha. Luego en Punto de Venta lo eliges en 1 click.")
+    st.title("👥 Clientes")
     col1,col2=st.columns([1,2])
     with col1:
         st.subheader("➕ Nuevo Cliente")
@@ -340,7 +424,7 @@ elif menu=="👥 Clientes":
             tel_c=st.text_input("Telefono", placeholder="829-264-7574")
             wa_c=st.text_input("WhatsApp", placeholder="8292647574")
             dir_c=st.text_input("Direccion", placeholder="Quisqueya, San Pedro")
-            fecha_c=st.date_input("Fecha Registro", value=date.today())
+            fecha_c = fecha_input("Fecha Registro", "fecha_cli")
             guardar_c=st.form_submit_button("Guardar Cliente",type="primary",use_container_width=True)
             if guardar_c:
                 if nom_c.strip()=="":
@@ -359,11 +443,10 @@ elif menu=="👥 Clientes":
         if buscar_cli and not df_cli.empty:
             df_cli = df_cli[df_cli["Nombre"].str.contains(buscar_cli, case=False, na=False) | df_cli["RNC"].str.contains(buscar_cli, case=False, na=False)]
         if df_cli.empty:
-            st.info("No hay clientes aun. Crea el primero a la izquierda.")
+            st.info("No hay clientes aun.")
         else:
             st.write(f"**{len(df_cli)} clientes registrados**")
             st.dataframe(df_cli, use_container_width=True, hide_index=True)
-            # Borrar cliente
             for _, r in df_cli.iterrows():
                 with st.container(border=True):
                     st.write(f"**{r['Nombre']}** - RNC: {r['RNC']} | 📱 {r['Telefono']} | 📅 {r['FechaRegistro']}")
@@ -376,12 +459,19 @@ elif menu=="👥 Clientes":
 
 elif menu=="🧾 Facturas":
     st.title("🧾 Facturas - Revisar, Editar y Imprimir")
-    st.caption("Aqui llega todo lo que se vende en Punto de Venta. La persona que imprime puede corregir antes de imprimir. Nada es automatico.")
+    # Boton nuevo para limpiar sin tener que ir a Cierre
+    if st.button("🧹 LIMPIAR TODAS LAS FACTURAS DEL DIA", use_container_width=True):
+        conn=get_conn()
+        conn.execute("DELETE FROM facturas")
+        conn.commit()
+        conn.close()
+        st.session_state.ultima_factura=None
+        st.success("Facturas limpiadas, ya no aparecen para imprimir")
+        st.rerun()
     df_fact = cargar_facturas()
     if df_fact.empty:
-        st.info("No hay facturas aun. Vende algo en Punto de Venta y aqui aparecera como Pendiente.")
+        st.info("No hay facturas aun. Todo limpio.")
     else:
-        # Filtros
         filtro = st.selectbox("Ver:", ["Todas","Pendiente - Por Revisar","Impresa / Cobrada"])
         if filtro != "Todas":
             df_fact = df_fact[df_fact["Estado"]==filtro]
@@ -391,40 +481,32 @@ elif menu=="🧾 Facturas":
             with st.container(border=True):
                 st.markdown(f"{estado_color} **Factura #{int(fac['Numero']):06d}** - {fac['Cliente']} | RNC: {fac['RNC']} | {fac['Fecha']} | **Total: RD$ {fac['Total']:,.2f}** | {fac['Estado']} | NCF: {fac['NCF'] or 'Sin asignar'}")
                 st.caption(f"Comprobante: {fac['TipoComprobante']}")
-                # Mostrar items actuales
                 for it in items:
                     st.write(f"- {it['Cant']} x {it['Producto']} = RD$ {it['Total']:,}")
-                # Si esta pendiente, permitir editar
                 if "Pendiente" in fac["Estado"]:
                     st.divider()
                     st.subheader("✏️ Editar esta factura antes de imprimir")
-                    # Editar items: permitir quitar o cambiar cantidad
                     items_editados = []
-                    cambios = False
                     for idx2, it in enumerate(items):
                         c_e1, c_e2, c_e3 = st.columns([3,1,1])
                         with c_e1:
                             st.write(f"{it['Producto']}")
                         with c_e2:
                             nueva = st.number_input(f"Cant #{fac['id']}-{idx2}", min_value=0, value=int(it['Cant']), key=f"fac_edit_{fac['id']}_{idx2}")
-                            if nueva != it['Cant']:
-                                cambios = True
                             if nueva > 0:
                                 it_copy = it.copy()
                                 it_copy['Cant'] = nueva
                                 it_copy['Total'] = nueva * it['Precio']
                                 items_editados.append(it_copy)
-                            # Si es 0, se elimina
                         with c_e3:
                             st.write(f"RD$ {it['Total']:,}")
-                    # Agregar producto extra a la factura
-                    st.write("**Agregar producto extra que el cliente pidio de mas:**")
+                    st.write("**Agregar producto extra:**")
                     df_inv2 = st.session_state.inventario
                     prod_extra = st.selectbox(f"Producto extra #{fac['id']}", ["Ninguno"] + df_inv2["Producto"].tolist(), key=f"extra_prod_{fac['id']}")
                     cant_extra = st.number_input(f"Cant extra #{fac['id']}", min_value=1, value=1, key=f"extra_cant_{fac['id']}")
                     col_g, col_i = st.columns(2)
                     with col_g:
-                        if st.button(f"💾 Guardar Cambios en Factura #{int(fac['Numero']):06d}", key=f"save_fac_{fac['id']}", use_container_width=True):
+                        if st.button(f"💾 Guardar Cambios #{int(fac['Numero']):06d}", key=f"save_fac_{fac['id']}", use_container_width=True):
                             if prod_extra != "Ninguno":
                                 row_extra = df_inv2[df_inv2["Producto"]==prod_extra].iloc[0]
                                 items_editados.append({"Producto":prod_extra,"Icono":row_extra["Icono"],"Cant":cant_extra,"Precio":row_extra["Precio"],"Total":cant_extra*row_extra["Precio"],"Codigo":row_extra["Codigo"]})
@@ -439,7 +521,6 @@ elif menu=="🧾 Facturas":
                             st.rerun()
                     with col_i:
                         if st.button(f"✅ Aprobar, Generar NCF e Imprimir #{int(fac['Numero']):06d}", key=f"print_fac_{fac['id']}", type="primary", use_container_width=True):
-                            # Si hubo cambios, guardarlos primero
                             if prod_extra != "Ninguno":
                                 row_extra = df_inv2[df_inv2["Producto"]==prod_extra].iloc[0]
                                 items_editados.append({"Producto":prod_extra,"Icono":row_extra["Icono"],"Cant":cant_extra,"Precio":row_extra["Precio"],"Total":cant_extra*row_extra["Precio"],"Codigo":row_extra["Codigo"]})
@@ -449,7 +530,6 @@ elif menu=="🧾 Facturas":
                             ncf_nuevo, _ = generar_ncf()
                             texto = generar_texto_factura(fac['Cliente'], fac['RNC'], ncf_nuevo, items_editados, new_sub, new_itbis, new_total, int(fac['Numero']), fac['TipoComprobante'])
                             st.session_state.ultima_factura = {"texto": texto, "num": int(fac['Numero'])}
-                            # Descontar stock y sumar ventas solo AHORA que se aprueba
                             for it in items_editados:
                                 if it.get("Codigo"):
                                     idx = st.session_state.inventario[st.session_state.inventario["Codigo"]==it["Codigo"]].index
@@ -471,14 +551,12 @@ elif menu=="🧾 Facturas":
                         conn.close()
                         st.rerun()
                 else:
-                    # Si ya esta impresa, mostrar boton de re-imprimir
                     texto_re = generar_texto_factura(fac['Cliente'], fac['RNC'], fac['NCF'], items, fac['Subtotal'], fac['Itbis'], fac['Total'], int(fac['Numero']), fac['TipoComprobante'])
                     st.download_button(f"⬇️ Descargar TXT Factura #{int(fac['Numero']):06d}", texto_re, file_name=f"FACTURA_{int(fac['Numero']):06d}.txt", key=f"dl_{fac['id']}")
                     imprimir_factura_html(texto_re, int(fac['Numero']))
 
 elif menu=="📦 Catalogo":
     st.title("📦 Catalogo - Solo para ver")
-    st.caption("Este catalogo es solo lectura. Para cambiar precios o stock, ve a Inventario Jefe con tu clave.")
     st.dataframe(st.session_state.inventario[["Codigo","Producto","Precio","Stock","Cat","Icono"]],use_container_width=True,hide_index=True)
 
 elif menu=="🏷️ Codigos de Barra":
@@ -488,6 +566,7 @@ elif menu=="🏷️ Codigos de Barra":
 
 elif menu=="🧮 Calculadora Materiales":
     st.title("🧮 Calculadora - 8 Opciones")
+    st.caption("Ahora al agregar al carrito, se agregan los materiales uno por uno, no como un solo paquete. Asi la factura sale detallada.")
     obra=st.selectbox("Que va a construir?", ["Pared de Blocks", "Casita 3x3 Completa", "Zapata Aislada", "Columna 3m", "Viga 4m", "Piso / Losa 10m2", "Techo Zinc 20m2", "Empanete 20m2"])
     if obra=="Pared de Blocks":
         c1,c2,c3=st.columns(3)
@@ -495,6 +574,7 @@ elif menu=="🧮 Calculadora Materiales":
         alto=c2.number_input("Alto (m)",1.0,10.0,2.5)
         tipo=c3.selectbox("Tipo Block", ["Block 6'' - RD$42","Block 4'' - RD$35","Block 8'' - RD$48"])
         precio_block=42 if "6''" in tipo else (35 if "4''" in tipo else 48)
+        codigo_block="BLK06" if "6''" in tipo else ("BLK04" if "4''" in tipo else "BLK08")
         if st.button("Calcular Pared",type="primary"):
             m2=largo*alto
             blocks=int(m2*12.5)+5
@@ -503,12 +583,24 @@ elif menu=="🧮 Calculadora Materiales":
             varilla=int(m2*1.2)
             total=blocks*precio_block + cemento*550 + int(arena*2500) + varilla*420
             df=pd.DataFrame([[f"Block {tipo}",blocks,f"RD$ {precio_block}",f"RD$ {blocks*precio_block:,}"],["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Varilla 3/8",varilla,"RD$ 420",f"RD$ {varilla*420:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Pared {m2}m2 {blocks} Blocks","Icono":"🧱","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":f"Block {tipo.split(' -')[0]}","Icono":"🧱","Cant":blocks,"Precio":precio_block,"Total":blocks*precio_block,"Codigo":codigo_block},
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Varilla 3/8 x 20","Icono":"🔩","Cant":varilla,"Precio":420,"Total":varilla*420,"Codigo":"VAR001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Pared {m2} m2"}
     elif obra=="Casita 3x3 Completa":
         if st.button("Calcular Casita Completa",type="primary",use_container_width=True):
             df=pd.DataFrame([["Block 6''",112,"RD$ 42","RD$ 4,704"],["Cemento",15,"RD$ 550","RD$ 8,250"],["Varilla 3/8",20,"RD$ 420","RD$ 8,400"],["Arena",2,"RD$ 2,500","RD$ 5,000"],["Grava",1.5,"RD$ 2,800","RD$ 4,200"],["Zinc 10ft",6,"RD$ 750","RD$ 4,500"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":"Casita 3x3 Completa","Icono":"🏠","Cant":1,"Precio":35839,"Total":35839,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Block 6''","Icono":"🧱","Cant":112,"Precio":42,"Total":4704,"Codigo":"BLK06"},
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":15,"Precio":550,"Total":8250,"Codigo":"CEM001"},
+                {"Producto":"Varilla 3/8 x 20","Icono":"🔩","Cant":20,"Precio":420,"Total":8400,"Codigo":"VAR001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":2,"Precio":2500,"Total":5000,"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":1.5,"Precio":2800,"Total":4200,"Codigo":"GRAV01"},
+                {"Producto":"Zinc Acanalado 10ft","Icono":"🏠","Cant":6,"Precio":750,"Total":4500,"Codigo":"ZIN001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":35839,"titulo":"Casita 3x3 Completa"}
     elif obra=="Zapata Aislada":
         c1,c2,c3=st.columns(3)
@@ -523,7 +615,12 @@ elif menu=="🧮 Calculadora Materiales":
             varilla=int(cant*6)
             total=cemento*550 + int(arena*2500) + int(grava*2800) + varilla*680
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Grava",grava,"RD$ 2,800",f"RD$ {int(grava*2800):,}"],["Varilla 1/2",varilla,"RD$ 680",f"RD$ {varilla*680:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"{cant} Zapatas {lado}x{lado}m","Icono":"🏗️","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":grava,"Precio":2800,"Total":int(grava*2800),"Codigo":"GRAV01"},
+                {"Producto":"Varilla 1/2 x 20","Icono":"🔩","Cant":varilla,"Precio":680,"Total":varilla*680,"Codigo":"VAR002"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"{cant} Zapatas {lado}m"}
     elif obra=="Columna 3m":
         cant=st.number_input("Cuantas columnas",1,20,4)
@@ -535,7 +632,13 @@ elif menu=="🧮 Calculadora Materiales":
             alambre=int(cant*2)
             total=cemento*550 + int(arena*2500) + int(grava*2800) + varilla*680 + alambre*85
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Grava",grava,"RD$ 2,800",f"RD$ {int(grava*2800):,}"],["Varilla 1/2",varilla,"RD$ 680",f"RD$ {varilla*680:,}"],["Alambre lb",alambre,"RD$ 85",f"RD$ {alambre*85:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"{cant} Columnas 3m","Icono":"🏛️","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":grava,"Precio":2800,"Total":int(grava*2800),"Codigo":"GRAV01"},
+                {"Producto":"Varilla 1/2 x 20","Icono":"🔩","Cant":varilla,"Precio":680,"Total":varilla*680,"Codigo":"VAR002"},
+                {"Producto":"Alambre Dulce lb","Icono":"🪢","Cant":alambre,"Precio":85,"Total":alambre*85,"Codigo":"ALAM01"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"{cant} Columnas"}
     elif obra=="Viga 4m":
         cant=st.number_input("Cuantas vigas 4m",1,20,3)
@@ -544,7 +647,11 @@ elif menu=="🧮 Calculadora Materiales":
             varilla=int(cant*5)
             total=cemento*550 + varilla*680 + cant*2*85
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Varilla 1/2",varilla,"RD$ 680",f"RD$ {varilla*680:,}"],["Alambre",cant*2,"RD$ 85",f"RD$ {cant*2*85:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"{cant} Vigas 4m","Icono":"🏗️","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Varilla 1/2 x 20","Icono":"🔩","Cant":varilla,"Precio":680,"Total":varilla*680,"Codigo":"VAR002"},
+                {"Producto":"Alambre Dulce lb","Icono":"🪢","Cant":cant*2,"Precio":85,"Total":cant*2*85,"Codigo":"ALAM01"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"{cant} Vigas 4m"}
     elif obra=="Piso / Losa 10m2":
         m2=st.number_input("M2 de piso/losa",1.0,200.0,10.0)
@@ -554,7 +661,11 @@ elif menu=="🧮 Calculadora Materiales":
             grava=round(m2*0.10,2)
             total=cemento*550 + int(arena*2500) + int(grava*2800)
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"],["Grava",grava,"RD$ 2,800",f"RD$ {int(grava*2800):,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Piso {m2}m2","Icono":"⬜","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+                {"Producto":"Grava m3","Icono":"🪨","Cant":grava,"Precio":2800,"Total":int(grava*2800),"Codigo":"GRAV01"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Piso {m2} m2"}
     elif obra=="Techo Zinc 20m2":
         m2=st.number_input("M2 de techo",1.0,200.0,20.0)
@@ -564,7 +675,11 @@ elif menu=="🧮 Calculadora Materiales":
             varilla=int(m2/5)+1
             total=zinc*750 + clavo*120 + varilla*420
             df=pd.DataFrame([["Zinc 10ft",zinc,"RD$ 750",f"RD$ {zinc*750:,}"],["Clavo lb",clavo,"RD$ 120",f"RD$ {clavo*120:,}"],["Varilla 3/8",varilla,"RD$ 420",f"RD$ {varilla*420:,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Techo Zinc {m2}m2","Icono":"🏠","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Zinc Acanalado 10ft","Icono":"🏠","Cant":zinc,"Precio":750,"Total":zinc*750,"Codigo":"ZIN001"},
+                {"Producto":"Clavo 2 1/2 lb","Icono":"🔨","Cant":clavo,"Precio":120,"Total":clavo*120,"Codigo":"CLAV01"},
+                {"Producto":"Varilla 3/8 x 20","Icono":"🔩","Cant":varilla,"Precio":420,"Total":varilla*420,"Codigo":"VAR001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Techo {m2} m2"}
     elif obra=="Empanete 20m2":
         m2=st.number_input("M2 de empanete",1.0,500.0,20.0)
@@ -573,15 +688,20 @@ elif menu=="🧮 Calculadora Materiales":
             arena=round(m2*0.04,2)
             total=cemento*550 + int(arena*2500)
             df=pd.DataFrame([["Cemento",cemento,"RD$ 550",f"RD$ {cemento*550:,}"],["Arena",arena,"RD$ 2,500",f"RD$ {int(arena*2500):,}"]],columns=["Material","Cant.","Precio","Subtotal"])
-            st.session_state.calc_temp={"Producto":f"Empanete {m2}m2","Icono":"🎨","Cant":1,"Precio":total,"Total":total,"Codigo":""}
+            st.session_state.calc_items=[
+                {"Producto":"Cemento Panam 94lbs","Icono":"🏗️","Cant":cemento,"Precio":550,"Total":cemento*550,"Codigo":"CEM001"},
+                {"Producto":"Arena Lavada m3","Icono":"🏖️","Cant":arena,"Precio":2500,"Total":int(arena*2500),"Codigo":"ARE001"},
+            ]
             st.session_state.calc_detalle={"df":df,"total":total,"titulo":f"Empanete {m2} m2"}
     if st.session_state.calc_detalle:
         st.divider()
         st.subheader(f"📋 Materiales: {st.session_state.calc_detalle['titulo']}")
         st.dataframe(st.session_state.calc_detalle["df"],use_container_width=True,hide_index=True)
         st.markdown(f"### 💰 TOTAL: RD$ {st.session_state.calc_detalle['total']:,}")
-        if st.button("AGREGAR AL CARRITO",type="primary",use_container_width=True):
-            agregar(st.session_state.calc_temp)
+        if st.button("AGREGAR TODOS LOS MATERIALES AL CARRITO",type="primary",use_container_width=True):
+            for item in st.session_state.calc_items:
+                agregar(item)
+            st.success(f"Se agregaron {len(st.session_state.calc_items)} productos al carrito.")
             st.rerun()
 
 elif menu=="📓 Fiado":
@@ -593,8 +713,8 @@ elif menu=="📓 Fiado":
             cliente=st.text_input("Nombre *",placeholder="Juan Perez")
             telefono=st.text_input("WhatsApp *",placeholder="829-264-7574")
             monto=st.number_input("Monto RD$ *",min_value=100,value=5000,step=100)
-            fecha=st.date_input("Fecha fiado",value=date.today())
-            vence=st.date_input("Vence",value=date.today())
+            fecha = fecha_input("Fecha fiado", "fecha_fiado")
+            vence = fecha_input("Vence", "fecha_vence")
             nota=st.text_input("Que se llevo",placeholder="10 Cemento")
             guardar=st.form_submit_button("Guardar Fiado",type="primary",use_container_width=True)
             if guardar:
@@ -710,6 +830,7 @@ elif menu=="📊 Cierre":
             st.session_state.inventario.to_excel(writer, sheet_name='Inventario', index=False)
         st.download_button(label="📦 Solo Inventario Excel", data=output_inv.getvalue(), file_name=f"INVENTARIO_{date.today()}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
     st.divider()
+    st.warning("⚠️ Antes de cerrar: Descarga tu Excel arriba. Al cerrar se borran las facturas del dia.")
     izq,der=st.columns([1.1,1.4])
     with izq:
         st.subheader("Cuadre")
@@ -723,9 +844,12 @@ elif menu=="📊 Cierre":
                 st.warning(f"SOBRA RD$ {dif:,.2f}")
             else:
                 st.error(f"FALTA RD$ {abs(dif):,.2f}")
-        if st.button("Cerrar Dia",type="primary",use_container_width=True):
-            st.session_state.ventas_hoy=0
-            save_ventas(0)
+        # ===== CERRAR DIA ARREGLADO =====
+        if st.button("🔒 Cerrar Dia y Limpiar Facturas",type="primary",use_container_width=True):
+            cerrar_dia_completo()
+            st.success("✅ Dia cerrado. Facturas limpiadas. Ya puedes empezar mañana sin reiniciar.")
+            st.balloons()
+            time.sleep(0.5)
             st.rerun()
     with der:
         st.subheader("Resumen Inventario (Solo lectura)")
@@ -735,7 +859,6 @@ elif menu=="📊 Cierre":
 
 elif menu=="🔐 Inventario Jefe":
     st.title("🔐 Inventario Jefe - Solo el Jefe")
-    st.caption("Esta seccion es privada. El empleado no puede entrar. Aqui si puedes cambiar precio, stock y agregar productos.")
     if 'jefe_ok' not in st.session_state:
         st.session_state.jefe_ok = False
     if not st.session_state.jefe_ok:
@@ -746,7 +869,7 @@ elif menu=="🔐 Inventario Jefe":
                 st.rerun()
             else:
                 st.error("Clave incorrecta. Pregunta al jefe.")
-        st.info("Clave por defecto: 6060 - Cambiala en el codigo donde dice CLAVE_JEFE = '6060'")
+        st.info("Clave por defecto: 6060")
         st.stop()
     st.success("✅ Acceso Jefe Autorizado")
     if st.button("🔒 Cerrar sesion Jefe"):
@@ -756,7 +879,6 @@ elif menu=="🔐 Inventario Jefe":
     try:
         df_edit=st.data_editor(st.session_state.inventario[["Codigo","Producto","Stock","Precio","Cat","Icono"]],use_container_width=True,num_rows="dynamic")
         if st.button("💾 Guardar Cambios en SQL - Jefe",type="primary",use_container_width=True):
-            # Guardar todo, incluyendo productos nuevos
             st.session_state.inventario = df_edit.copy()
             save_inv(st.session_state.inventario)
             st.success("Guardado por el Jefe!")
@@ -783,7 +905,6 @@ elif menu=="🔐 Inventario Jefe":
 
 elif menu=="🔍 Ver Base de Datos SQL":
     st.title("🔍 Base de Datos SQL - La Fe 606")
-    st.caption("Vista minimalista | Archivo: lafe_606.db")
     conn = get_conn()
     try:
         total_prod = conn.execute("SELECT COUNT(*) FROM inventario").fetchone()[0]
