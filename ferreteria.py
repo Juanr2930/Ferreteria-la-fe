@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date, datetime
 import streamlit.components.v1 as components
 import urllib.parse
-import sqlite3, hashlib, time, json
+import sqlite3, hashlib, time, json, threading
 from io import BytesIO
 
 st.set_page_config(page_title="Ferreteria La Fe 606 PRO DEFINITIVO", layout="wide", page_icon="🧱")
@@ -80,22 +80,28 @@ div[data-testid="stDataEditor"] div { color: black !important; }
 </style>
 """, unsafe_allow_html=True)
 
+# ===== FIX MULTI-CAJA - YA ARREGLADO =====
 DB_FILE = "lafe_606.db"
 CLAVE_JEFE = "6060"
+DB_LOCK = threading.Lock()
+
+def get_conn():
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False, timeout=30.0)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
+    return conn
 
 def fecha_input(label, key):
     hoy = date.today().strftime("%d/%m/%Y")
     valor = st.text_input(label, value=hoy, placeholder="DD/MM/AAAA Ej: 06/11/2026", key=key)
     return valor
 
-def get_conn():
-    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
-
 def init_db():
     conn = get_conn()
     cur = conn.cursor()
+    cur.execute("PRAGMA journal_mode=WAL;")
     cur.executescript("""
     CREATE TABLE IF NOT EXISTS inventario (Codigo TEXT PRIMARY KEY, Producto TEXT, Precio REAL, Stock INTEGER, Cat TEXT, Icono TEXT);
     CREATE TABLE IF NOT EXISTS fiados (Cliente TEXT, WhatsApp TEXT, WhatsApp_Display TEXT, Monto REAL, Fecha TEXT, Vence TEXT, QueLlevo TEXT, Estado TEXT);
@@ -136,23 +142,21 @@ def generar_clave(n,t):
     return f"LAFE-{h[:4]}-{h[4:8]}-{h[8:12]}"
 
 def generar_ncf():
-    conn = get_conn()
-    n = int(float(conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_ncf'").fetchone()[0]))
-    conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('contador_ncf',?)", (str(n+1),))
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn = get_conn()
+        n = int(float(conn.execute("SELECT valor FROM ventas_config WHERE clave='contador_ncf'").fetchone()[0]))
+        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('contador_ncf',?)", (str(n+1),))
+        conn.commit()
+        conn.close()
     return f"B02{str(n).zfill(8)}", n
 
-# ===== FUNCION NUEVA: CERRAR DIA BIEN, SIN REINICIAR =====
 def cerrar_dia_completo():
-    conn = get_conn()
-    # 1. Borra todas las facturas del dia (las que salian para imprimir)
-    conn.execute("DELETE FROM facturas")
-    # 2. Pone ventas en 0
-    conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy','0')")
-    conn.commit()
-    conn.close()
-    # 3. Limpia todo en memoria para que no haya que reiniciar
+    with DB_LOCK:
+        conn = get_conn()
+        conn.execute("DELETE FROM facturas")
+        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy','0')")
+        conn.commit()
+        conn.close()
     st.session_state.ventas_hoy = 0
     st.session_state.carrito = []
     st.session_state.ultima_factura = None
@@ -201,32 +205,36 @@ def cargar_sql():
         return None,None,None,None
 
 def save_inv(df):
-    conn=get_conn()
-    conn.execute("DELETE FROM inventario")
-    df.to_sql("inventario",conn,if_exists="append",index=False)
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn=get_conn()
+        conn.execute("DELETE FROM inventario")
+        df.to_sql("inventario",conn,if_exists="append",index=False)
+        conn.commit()
+        conn.close()
 
 def save_fiados(lista):
-    conn=get_conn()
-    conn.execute("DELETE FROM fiados")
-    if lista:
-        df_temp = pd.DataFrame(lista)
-        df_temp.to_sql("fiados",conn,if_exists="append",index=False)
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn=get_conn()
+        conn.execute("DELETE FROM fiados")
+        if lista:
+            df_temp = pd.DataFrame(lista)
+            df_temp.to_sql("fiados",conn,if_exists="append",index=False)
+        conn.commit()
+        conn.close()
 
 def save_ventas(m):
-    conn=get_conn()
-    conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy',?)",(str(m),))
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn=get_conn()
+        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('ventas_hoy',?)",(str(m),))
+        conn.commit()
+        conn.close()
 
 def save_contador(n):
-    conn=get_conn()
-    conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('contador_factura',?)",(str(n),))
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn=get_conn()
+        conn.execute("INSERT OR REPLACE INTO ventas_config VALUES ('contador_factura',?)",(str(n),))
+        conn.commit()
+        conn.close()
 
 def cargar_clientes():
     conn=get_conn()
@@ -315,6 +323,13 @@ with st.sidebar:
         save_ventas(st.session_state.ventas_hoy)
         save_contador(st.session_state.contador_factura)
         st.success("Guardado!")
+    if st.button("🔄 Recargar Datos de las Otras Cajas", use_container_width=True):
+        df_s,f_s,v_s,c_s = cargar_sql()
+        st.session_state.inventario = df_s
+        st.session_state.fiados = f_s
+        st.session_state.ventas_hoy = v_s
+        st.session_state.contador_factura = c_s
+        st.rerun()
 
 if menu=="🛒 Punto de Venta":
     st.title("🛒 Punto de Venta")
@@ -393,11 +408,12 @@ if menu=="🛒 Punto de Venta":
             tipo_comp = st.selectbox("Tipo Comprobante DGII", ["B02 - Consumo (sin RNC)", "B01 - Credito Fiscal (con RNC)", "B04 - Regimen Especial"])
             if st.button("📝 ENVIAR A FACTURACION (No cobra aun)",type="primary",use_container_width=True):
                 num=st.session_state.contador_factura
-                conn=get_conn()
-                conn.execute("INSERT INTO facturas (Numero, NCF, Cliente, RNC, Telefono, Fecha, Items, Subtotal, Itbis, Total, Estado, TipoComprobante) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (num, "", st.session_state.cliente_seleccionado, st.session_state.rnc_seleccionado, "", datetime.now().strftime("%d/%m/%Y %I:%M %p"), json.dumps(st.session_state.carrito), sub, itbis, total, "Pendiente - Por Revisar", tipo_comp))
-                conn.commit()
-                conn.close()
+                with DB_LOCK:
+                    conn=get_conn()
+                    conn.execute("INSERT INTO facturas (Numero, NCF, Cliente, RNC, Telefono, Fecha, Items, Subtotal, Itbis, Total, Estado, TipoComprobante) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (num, "", st.session_state.cliente_seleccionado, st.session_state.rnc_seleccionado, "", datetime.now().strftime("%d/%m/%Y %I:%M %p"), json.dumps(st.session_state.carrito), sub, itbis, total, "Pendiente - Por Revisar", tipo_comp))
+                    conn.commit()
+                    conn.close()
                 st.session_state.contador_factura+=1
                 save_contador(st.session_state.contador_factura)
                 st.session_state.carrito=[]
@@ -430,10 +446,11 @@ elif menu=="👥 Clientes":
                 if nom_c.strip()=="":
                     st.error("Pon nombre")
                 else:
-                    conn=get_conn()
-                    conn.execute("INSERT INTO clientes (Nombre,RNC,Telefono,WhatsApp,Direccion,FechaRegistro) VALUES (?,?,?,?,?,?)",(nom_c.strip(), rnc_c, tel_c, wa_c, dir_c, str(fecha_c)))
-                    conn.commit()
-                    conn.close()
+                    with DB_LOCK:
+                        conn=get_conn()
+                        conn.execute("INSERT INTO clientes (Nombre,RNC,Telefono,WhatsApp,Direccion,FechaRegistro) VALUES (?,?,?,?,?,?)",(nom_c.strip(), rnc_c, tel_c, wa_c, dir_c, str(fecha_c)))
+                        conn.commit()
+                        conn.close()
                     st.success(f"Cliente {nom_c} guardado")
                     st.rerun()
     with col2:
@@ -451,20 +468,21 @@ elif menu=="👥 Clientes":
                 with st.container(border=True):
                     st.write(f"**{r['Nombre']}** - RNC: {r['RNC']} | 📱 {r['Telefono']} | 📅 {r['FechaRegistro']}")
                     if st.button(f"🗑️ Borrar {r['Nombre']}", key=f"del_cli_{r['id']}"):
-                        conn=get_conn()
-                        conn.execute("DELETE FROM clientes WHERE id=?", (int(r['id']),))
-                        conn.commit()
-                        conn.close()
+                        with DB_LOCK:
+                            conn=get_conn()
+                            conn.execute("DELETE FROM clientes WHERE id=?", (int(r['id']),))
+                            conn.commit()
+                            conn.close()
                         st.rerun()
 
 elif menu=="🧾 Facturas":
     st.title("🧾 Facturas - Revisar, Editar y Imprimir")
-    # Boton nuevo para limpiar sin tener que ir a Cierre
     if st.button("🧹 LIMPIAR TODAS LAS FACTURAS DEL DIA", use_container_width=True):
-        conn=get_conn()
-        conn.execute("DELETE FROM facturas")
-        conn.commit()
-        conn.close()
+        with DB_LOCK:
+            conn=get_conn()
+            conn.execute("DELETE FROM facturas")
+            conn.commit()
+            conn.close()
         st.session_state.ultima_factura=None
         st.success("Facturas limpiadas, ya no aparecen para imprimir")
         st.rerun()
@@ -513,10 +531,11 @@ elif menu=="🧾 Facturas":
                             new_sub = sum([x['Total'] for x in items_editados])
                             new_itbis = new_sub*0.18
                             new_total = new_sub*1.18
-                            conn=get_conn()
-                            conn.execute("UPDATE facturas SET Items=?, Subtotal=?, Itbis=?, Total=? WHERE id=?", (json.dumps(items_editados), new_sub, new_itbis, new_total, int(fac['id'])))
-                            conn.commit()
-                            conn.close()
+                            with DB_LOCK:
+                                conn=get_conn()
+                                conn.execute("UPDATE facturas SET Items=?, Subtotal=?, Itbis=?, Total=? WHERE id=?", (json.dumps(items_editados), new_sub, new_itbis, new_total, int(fac['id'])))
+                                conn.commit()
+                                conn.close()
                             st.success("Cambios guardados")
                             st.rerun()
                     with col_i:
@@ -538,17 +557,19 @@ elif menu=="🧾 Facturas":
                             save_inv(st.session_state.inventario)
                             st.session_state.ventas_hoy += new_total
                             save_ventas(st.session_state.ventas_hoy)
-                            conn=get_conn()
-                            conn.execute("UPDATE facturas SET Items=?, Subtotal=?, Itbis=?, Total=?, Estado=?, NCF=? WHERE id=?", (json.dumps(items_editados), new_sub, new_itbis, new_total, "Impresa / Cobrada", ncf_nuevo, int(fac['id'])))
-                            conn.commit()
-                            conn.close()
+                            with DB_LOCK:
+                                conn=get_conn()
+                                conn.execute("UPDATE facturas SET Items=?, Subtotal=?, Itbis=?, Total=?, Estado=?, NCF=? WHERE id=?", (json.dumps(items_editados), new_sub, new_itbis, new_total, "Impresa / Cobrada", ncf_nuevo, int(fac['id'])))
+                                conn.commit()
+                                conn.close()
                             st.success(f"Factura aprobada con NCF {ncf_nuevo}")
                             st.rerun()
                     if st.button(f"🗑️ Anular Factura #{int(fac['Numero']):06d}", key=f"anular_{fac['id']}"):
-                        conn=get_conn()
-                        conn.execute("DELETE FROM facturas WHERE id=?", (int(fac['id']),))
-                        conn.commit()
-                        conn.close()
+                        with DB_LOCK:
+                            conn=get_conn()
+                            conn.execute("DELETE FROM facturas WHERE id=?", (int(fac['id']),))
+                            conn.commit()
+                            conn.close()
                         st.rerun()
                 else:
                     texto_re = generar_texto_factura(fac['Cliente'], fac['RNC'], fac['NCF'], items, fac['Subtotal'], fac['Itbis'], fac['Total'], int(fac['Numero']), fac['TipoComprobante'])
@@ -844,7 +865,6 @@ elif menu=="📊 Cierre":
                 st.warning(f"SOBRA RD$ {dif:,.2f}")
             else:
                 st.error(f"FALTA RD$ {abs(dif):,.2f}")
-        # ===== CERRAR DIA ARREGLADO =====
         if st.button("🔒 Cerrar Dia y Limpiar Facturas",type="primary",use_container_width=True):
             cerrar_dia_completo()
             st.success("✅ Dia cerrado. Facturas limpiadas. Ya puedes empezar mañana sin reiniciar.")
