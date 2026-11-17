@@ -49,13 +49,20 @@ div[data-testid="stDataEditor"] div { color: black !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ===== CLOUD - SUPABASE POSTGRES - SIN SQLITE =====
+# ===== CLOUD - SUPABASE POSTGRES - SOLO CLOUD CON SSL =====
 CLAVE_JEFE = "6060"
 DB_LOCK = threading.Lock()
 MODO = "POSTGRES - CLOUD"
 
 def get_conn():
-    conn = psycopg2.connect(st.secrets["DATABASE_URL"])
+    url = st.secrets["DATABASE_URL"]
+    # Supabase obliga a usar SSL, sin esto nunca conecta
+    if "sslmode" not in url:
+        if "?" in url:
+            url += "&sslmode=require"
+        else:
+            url += "?sslmode=require"
+    conn = psycopg2.connect(url, connect_timeout=10)
     return conn
 
 def fecha_input(label, key):
