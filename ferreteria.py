@@ -107,7 +107,13 @@ def init_db():
     conn.commit()
     conn.close()
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    st.error(f"ERROR REAL DE SUPABASE: {e}")
+    st.info("Copia este mensaje tal cual y mandamelo. Este es el error que Streamlit te estaba tapando.")
+    st.code(f'DATABASE_URL que esta usando: {st.secrets["DATABASE_URL"][:60]}... (tapado por seguridad)')
+    st.stop()
 
 def generar_clave(n,t):
     b=f"606-{n.upper().strip()}-{t}-LAFE2026"
